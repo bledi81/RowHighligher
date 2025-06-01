@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="Ribbon_Load">
+  <ribbon>
+    <tabs>
+      <tab id="tabRowHighlighter" label="Row Highlighter">
+        <group id="groupHighlighterSettings" label="Highlighter Settings">
+          <toggleButton id="toggleEnableHighlighter"
+                        label="Enable Row Highlighter"
+                        size="large"
+                        onAction="OnToggleEnableHighlighter_Click"
+                        getPressed="GetEnableHighlighter_Pressed" 
+                        imageMso="EnableInlineEdit"/>
+          <button id="buttonChangeColor"
+                  label="Change Highlight Color"
+                  size="large"
+                  onAction="OnChangeColor_Click"
+                  imageMso="ColorPickerCalendar"/>
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>
+
