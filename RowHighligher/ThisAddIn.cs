@@ -5,6 +5,7 @@ using Excel = Microsoft.Office.Interop.Excel;
 using Office = Microsoft.Office.Core;
 using System.Runtime.InteropServices;
 using System.Drawing;
+using System.Data;
 
 namespace RowHighligher
 {
@@ -13,11 +14,22 @@ namespace RowHighligher
         public Ribbon1 RibbonInstance { get; private set; }
         private const string ADDIN_CF_FORMULA = "=ROW()=ROW()+N(\"RowHighlighterAddInRule_v1.1\")";
 
+        private bool wasHighlighterEnabledBeforeSave = false;
+
+        // In the Calculator will use parenthesis to evaluate the expression correctly
+        
+
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
             if (Properties.Settings.Default.HighlightColor.A == 0)
             {
                 Properties.Settings.Default.HighlightColor = System.Drawing.Color.Yellow;
+                Properties.Settings.Default.Save();
+            }
+            
+            if (Properties.Settings.Default.CustomFontColor.A == 0)
+            {
+                Properties.Settings.Default.CustomFontColor = System.Drawing.Color.Black;
                 Properties.Settings.Default.Save();
             }
 
@@ -191,6 +203,31 @@ namespace RowHighligher
                 }
             }
         }
+        
+        // This method can be called when settings change to reapply highlighting to the current selection
+        public void ReapplyHighlighting()
+        {
+            if (this.IsHighlighterEnabled)
+            {
+                System.Diagnostics.Debug.WriteLine("ReapplyHighlighting: Re-applying to current selection.");
+                Excel.Range selection = null;
+                try
+                {
+                    if (this.Application.ActiveWorkbook != null && this.Application.ActiveSheet != null) {
+                        selection = this.Application.Selection as Excel.Range;
+                        if (selection != null)
+                        {
+                            ApplyHighlightingToSelection(selection);
+                        }
+                    }
+                }
+                catch (COMException ex) { System.Diagnostics.Debug.WriteLine($"ReapplyHighlighting Error: {ex.Message}"); }
+                finally
+                {
+                    if (selection != null) Marshal.ReleaseComObject(selection);
+                }
+            }
+        }
 
         private void Application_SheetSelectionChange(object Sh, Excel.Range Target)
         {
@@ -243,8 +280,17 @@ namespace RowHighligher
 
         private void Application_WorkbookBeforeSave(Excel.Workbook Wb, bool SaveAsUI, ref bool Cancel)
         {
-            System.Diagnostics.Debug.WriteLine("WorkbookBeforeSave: Toggling off highlighter before save.");
-            this.IsHighlighterEnabled = false;
+            System.Diagnostics.Debug.WriteLine("WorkbookBeforeSave: Storing highlighter state before save.");
+
+            // Remember the current state before disabling
+            wasHighlighterEnabledBeforeSave = this.IsHighlighterEnabled;
+
+            // Disable highlighting during save
+            if (wasHighlighterEnabledBeforeSave)
+            {
+                System.Diagnostics.Debug.WriteLine("WorkbookBeforeSave: Temporarily disabling highlighter for save.");
+                this.IsHighlighterEnabled = false;
+            }
         }
 
         private void Application_WorkbookBeforeClose(Excel.Workbook Wb, ref bool Cancel)
@@ -255,8 +301,14 @@ namespace RowHighligher
 
         private void Application_WorkbookAfterSave(Excel.Workbook Wb, bool Success)
         {
-            System.Diagnostics.Debug.WriteLine("WorkbookAfterSave: Re-enabling highlighter after save.");
-            this.IsHighlighterEnabled = true;
+            System.Diagnostics.Debug.WriteLine($"WorkbookAfterSave: Restoring highlighter to previous state: {wasHighlighterEnabledBeforeSave}");
+
+            // Only re-enable if it was enabled before saving
+            if (wasHighlighterEnabledBeforeSave)
+            {
+                this.IsHighlighterEnabled = true;
+            }
+
         }
 
         private void ApplyHighlightingToSelection(Excel.Range selection)
@@ -318,11 +370,32 @@ namespace RowHighligher
                 {
                     System.Diagnostics.Debug.WriteLine($"ApplyHighlightingToSelection: Adding CF to {rowRangeToFormat.Address}");
                     fcs = rowRangeToFormat.FormatConditions;
+                    
+                    // Use the priority parameter to set the rule on top if requested
+                    int priority = Properties.Settings.Default.PlaceRuleOnTop ? 1 : fcs.Count + 1;
+                    
                     fc = (Excel.FormatCondition)fcs.Add(
                         Excel.XlFormatConditionType.xlExpression,
                         Formula1: ADDIN_CF_FORMULA);
                     
+                    // Set the rule's priority (position in the stack)
+                    fc.Priority = priority;
+                    
+                    // Apply background color
                     fc.Interior.Color = ColorTranslator.ToOle(Properties.Settings.Default.HighlightColor);
+                    
+                    // Apply font bold if enabled
+                    if (Properties.Settings.Default.MakeRuleBold)
+                    {
+                        fc.Font.Bold = true;
+                    }
+                    
+                    // Apply font color if enabled
+                    if (Properties.Settings.Default.CustomFontColorEnabled)
+                    {
+                        fc.Font.Color = ColorTranslator.ToOle(Properties.Settings.Default.CustomFontColor);
+                    }
+                    
                     fc.StopIfTrue = false;
                     
                     if (fc != null) { Marshal.ReleaseComObject(fc); fc = null; }
@@ -459,5 +532,6 @@ namespace RowHighligher
             this.Startup += new System.EventHandler(ThisAddIn_Startup);
             this.Shutdown += new System.EventHandler(ThisAddIn_Shutdown);
         }
+
     }
 }

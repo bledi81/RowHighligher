@@ -46,5 +46,65 @@ namespace RowHighligher.Properties {
                 this["HighlightColor"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool PlaceRuleOnTop {
+            get {
+                return ((bool)(this["PlaceRuleOnTop"]));
+            }
+            set {
+                this["PlaceRuleOnTop"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MakeRuleBold {
+            get {
+                return ((bool)(this["MakeRuleBold"]));
+            }
+            set {
+                this["MakeRuleBold"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool CustomFontColorEnabled {
+            get {
+                return ((bool)(this["CustomFontColorEnabled"]));
+            }
+            set {
+                this["CustomFontColorEnabled"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Black")]
+        public global::System.Drawing.Color CustomFontColor {
+            get {
+                return ((global::System.Drawing.Color)(this["CustomFontColor"]));
+            }
+            set {
+                this["CustomFontColor"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool IsCalculatorDetached {
+            get {
+                return ((bool)(this["IsCalculatorDetached"]));
+            }
+            set {
+                this["IsCalculatorDetached"] = value;
+            }
+        }
     }
 }

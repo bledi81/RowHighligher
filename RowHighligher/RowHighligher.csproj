@@ -208,6 +208,10 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="Ribbon1.cs" />
+    <Compile Include="ScientificCalculator.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Settings.cs" />
     <Compile Include="ThisAddIn.cs">
       <SubType>Code</SubType>
     </Compile>
