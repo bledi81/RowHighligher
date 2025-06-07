@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using Excel = Microsoft.Office.Interop.Excel;
 using System.Data;
+using System.Text;
 
 namespace RowHighligher
 {
@@ -12,6 +13,8 @@ namespace RowHighligher
         private TextBox displayTextBox;
         private Button insertButton;
         private Button clearButton;
+        private Button helpButton;  // Add help button field
+        private Button settingsButton; // Add settings button field
         private Button[] numberButtons;
         private Button[] operatorButtons;
         private Button[] scientificButtons;
@@ -30,6 +33,15 @@ namespace RowHighligher
         // Add this field to store characters as they're typed
         private string keyBuffer = "";
 
+        // Add constants
+        private const double PI = Math.PI;
+        private const double E = Math.E;
+        private const double RAD_TO_DEG = 180.0 / Math.PI;
+        private const double DEG_TO_RAD = Math.PI / 180.0;
+
+        // Update the field to use the saved setting
+        private int decimalPlaces = Properties.Settings.Default.CalculatorDecimalPlaces;
+
         public ScientificCalculator()
         {
             InitializeComponents();
@@ -37,7 +49,8 @@ namespace RowHighligher
             // Set form properties
             this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
             this.Text = "Scientific Calculator";
-            this.MinimumSize = new Size(300, 400);
+            this.MinimumSize = new Size(350, 550);  // Increased minimum size
+            this.Size = new Size(350, 600);         // Set larger default size
             this.MaximizeBox = false;
             this.MinimizeBox = true;
             this.TopMost = Properties.Settings.Default.IsCalculatorDetached;
@@ -85,55 +98,104 @@ namespace RowHighligher
             TableLayoutPanel mainPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                RowCount = 8, // Increase from 7 to 8
+                RowCount = 6,         // Reduced to 6 rows
                 ColumnCount = 1,
-                Padding = new Padding(10)
+                Padding = new Padding(5)
             };
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 15)); // Display
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // Insert/Clear
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // Parentheses (new)
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // Scientific
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 15)); // Numbers
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 15)); // Numbers
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 15)); // Numbers
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // Bottom row
+
+            // Update row styles for better proportions
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Display
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Buttons panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Parentheses panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 21));  // Scientific panel (increased)
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30));  // Number panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Bottom panel
 
             // Display textbox
             displayTextBox = new TextBox
             {
                 Dock = DockStyle.Fill,
                 ReadOnly = true,
-                Font = new Font("Consolas", 16, FontStyle.Bold),
+                Font = new Font("Consolas", 20, FontStyle.Bold),
                 TextAlign = HorizontalAlignment.Right,
                 Text = "0"
             };
-            mainPanel.Controls.Add(displayTextBox, 0, 0);
 
-            // Insert button in a panel with Clear
+            // Add panel for display and decimal places control
+            Panel displayPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0)
+            };
+            displayPanel.Controls.Add(displayTextBox);
+
+            mainPanel.Controls.Add(displayPanel, 0, 0);
+
+            // Insert button in a panel with Clear and decimal places
             TableLayoutPanel buttonsPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 2,
+                ColumnCount = 5,  // Increase column count to add logo
                 RowCount = 1
             };
-            buttonsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            buttonsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            for (int i = 0; i < 6; i++) // Update column count
+            {
+                buttonsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, i == 4 ? 28 : 18)); // Logo column bigger
+            }
+
+            // Add help button
+            helpButton = new Button
+            {
+                Text = "Help (F1)",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Margin = new Padding(1)
+            };
+            helpButton.Click += HelpButton_Click;
+            buttonsPanel.Controls.Add(helpButton, 0, 0);
 
             insertButton = new Button
             {
                 Text = "Insert (Ctrl+Enter)",
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Margin = new Padding(1)
             };
             insertButton.Click += InsertButton_Click;
-            buttonsPanel.Controls.Add(insertButton, 0, 0);
+            buttonsPanel.Controls.Add(insertButton, 1, 0);
 
             clearButton = new Button
             {
                 Text = "LastAns",
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Margin = new Padding(1)
             };
-            clearButton.Click += LastAnsButton_Click; // Change the click handler
-            buttonsPanel.Controls.Add(clearButton, 1, 0);
+            clearButton.Click += LastAnsButton_Click;
+            buttonsPanel.Controls.Add(clearButton, 2, 0);
+
+            // Create a PictureBox for the logo
+            PictureBox logoBox = new PictureBox
+            {
+                Dock = DockStyle.Fill,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Margin = new Padding(1),
+                Image = Properties.Resources.Bankers_Logo_Albania // Add your PNG image to resources
+            };
+
+            // Add logo after settings button
+            buttonsPanel.Controls.Add(logoBox, 4, 0);
+
+            // Add settings button
+            settingsButton = new Button
+            {
+                Text = "Settings",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Margin = new Padding(1)
+            };
+            settingsButton.Click += SettingsButton_Click;
+            buttonsPanel.Controls.Add(settingsButton, 3, 0);
 
             mainPanel.Controls.Add(buttonsPanel, 0, 1);
 
@@ -188,37 +250,77 @@ namespace RowHighligher
             // Adjust the row index for subsequent panels
             //mainPanel.Controls.Add(scientificPanel, 0, 3);
 
-
+            // Create a panel to hold the scientific panel and provide the border
+            Panel scientificBorderPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.LightSteelBlue,
+                Padding = new Padding(3)  // Increased padding for better appearance
+            };
 
             // Scientific buttons panel
             TableLayoutPanel scientificPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 5,
-                RowCount = 1
+                ColumnCount = 4,  // Changed to 4 columns
+                RowCount = 3,     // Changed to 3 rows
+                BackColor = SystemColors.Control
             };
-            scientificPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
-            scientificPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
-            scientificPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
-            scientificPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
-            scientificPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
 
-            scientificButtons = new Button[5];
-            string[] scientificOps = { "sqrt", "x^y", "1/x", "sin", "cos" };
-
-            for (int i = 0; i < scientificButtons.Length; i++)
+            // Set equal width for columns
+            for (int i = 0; i < 4; i++)
             {
-                scientificButtons[i] = new Button
-                {
-                    Text = scientificOps[i],
-                    Dock = DockStyle.Fill,
-                    Tag = scientificOps[i]
-                };
-                scientificButtons[i].Click += ScientificButton_Click;
-                scientificPanel.Controls.Add(scientificButtons[i], i, 0);
+                scientificPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
             }
 
-            mainPanel.Controls.Add(scientificPanel, 0, 2);
+            // Set height for rows (making the constant row slightly smaller)
+            scientificPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 35f));  // First row
+            scientificPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 35f));  // Second row
+            scientificPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30f));  // Constants row
+
+            scientificButtons = new Button[12];  // Increased from 8 to 12
+            string[] scientificOps = {
+                "sqrt", "sin", "cos", "tan",      // Row 1
+                "x^y", "log", "ln", "1/x",        // Row 2
+                "π", "e", "RAD", "DEG"            // Row 3 (constants)
+            };
+
+            // Add buttons in 3x4 grid with improved styling
+            for (int i = 0; i < scientificButtons.Length; i++)
+            {
+                int row = i / 4;    // 4 buttons per row
+                int col = i % 4;    // Columns 0-3 in each row
+
+                string buttonText = scientificOps[i];
+                string buttonTag = scientificOps[i];
+
+                // Special handling for RAD and DEG buttons
+                if (buttonText == "RAD")
+                {
+                    buttonText = "→ RAD";
+                    buttonTag = "deg_to_rad";
+                }
+                else if (buttonText == "DEG")
+                {
+                    buttonText = "→ DEG";
+                    buttonTag = "rad_to_deg";
+                }
+
+                scientificButtons[i] = new Button
+                {
+                    Text = buttonText,
+                    Tag = buttonTag,
+                    Dock = DockStyle.Fill,
+                    Margin = new Padding(2),
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Regular)
+                };
+                scientificButtons[i].Click += ScientificButton_Click;
+                scientificPanel.Controls.Add(scientificButtons[i], col, row);
+            }
+
+            scientificBorderPanel.Controls.Add(scientificPanel);
+            mainPanel.Controls.Add(scientificBorderPanel, 0, 3);  // Add to row 3
 
             // Number buttons panel for rows 3, 4, 5
             TableLayoutPanel numberPanel = new TableLayoutPanel
@@ -311,8 +413,7 @@ namespace RowHighligher
             operatorButtons[2].Click += OperatorButton_Click;
             numberPanel.Controls.Add(operatorButtons[2], 3, 3);
 
-            mainPanel.Controls.Add(numberPanel, 0, 3);
-            mainPanel.SetRowSpan(numberPanel, 3);
+            mainPanel.Controls.Add(numberPanel, 0, 4);  // Add to row 4 (moved down)
 
             // Bottom panel for 0, ., +/-, =, +
             TableLayoutPanel bottomPanel = new TableLayoutPanel
@@ -342,7 +443,7 @@ namespace RowHighligher
             operatorButtons[5].Click += OperatorButton_Click;
             bottomPanel.Controls.Add(operatorButtons[5], 3, 0);
 
-            mainPanel.Controls.Add(bottomPanel, 0, 6);
+            mainPanel.Controls.Add(bottomPanel, 0, 5);
 
             this.Controls.Add(mainPanel);
         }
@@ -411,7 +512,12 @@ namespace RowHighligher
                 // Check if we've completed a function name
                 if (keyBuffer.EndsWith("sqrt", StringComparison.OrdinalIgnoreCase) ||
                     keyBuffer.EndsWith("sin", StringComparison.OrdinalIgnoreCase) ||
-                    keyBuffer.EndsWith("cos", StringComparison.OrdinalIgnoreCase))
+                    keyBuffer.EndsWith("cos", StringComparison.OrdinalIgnoreCase) ||
+                    keyBuffer.EndsWith("tan", StringComparison.OrdinalIgnoreCase) ||
+                    keyBuffer.EndsWith("log", StringComparison.OrdinalIgnoreCase) ||
+                    keyBuffer.EndsWith("ln", StringComparison.OrdinalIgnoreCase) ||
+                    keyBuffer.EndsWith("pi", StringComparison.OrdinalIgnoreCase) ||  // Add pi
+                    keyBuffer.Equals("e", StringComparison.OrdinalIgnoreCase))       // Add e
                 {
                     // Get function name
                     string functionName = "";
@@ -432,10 +538,47 @@ namespace RowHighligher
                         functionName = "cos"; 
                         charsToCut = 3;
                     }
+                    else if (keyBuffer.EndsWith("tan", StringComparison.OrdinalIgnoreCase))
+                    {
+                        functionName = "tan";
+                        charsToCut = 3;
+                    }
+                    else if (keyBuffer.EndsWith("log", StringComparison.OrdinalIgnoreCase))
+                    {
+                        functionName = "log";
+                        charsToCut = 3;
+                    }
+                    else if (keyBuffer.EndsWith("ln", StringComparison.OrdinalIgnoreCase))
+                    {
+                        functionName = "ln";
+                        charsToCut = 2;
+                    }
+                    else if (keyBuffer.EndsWith("pi", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Special handling for pi
+                        string currentTextInner = displayTextBox.Text; // Renamed to 'currentTextInner'
+                        displayTextBox.Text = currentTextInner.Substring(0, currentTextInner.Length - 2) + "π";
+                        keyBuffer = "";
+                        isNewCalculation = false;
+                        SetCursorToEnd();
+                        e.Handled = true;
+                        return;
+                    }
+                    else if (keyBuffer.Equals("e", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Special handling for e
+                        string currentTextInner = displayTextBox.Text; // Renamed to 'currentTextInner'
+                        displayTextBox.Text = currentTextInner.Substring(0, currentTextInner.Length - 1) + "e";
+                        keyBuffer = "";
+                        isNewCalculation = false;
+                        SetCursorToEnd();
+                        e.Handled = true;
+                        return;
+                    }
                     
                     // Remove the function characters and add the function with parenthesis
-                    string currentText = displayTextBox.Text;
-                    displayTextBox.Text = currentText.Substring(0, currentText.Length - charsToCut) + 
+                    string currentTextOuter = displayTextBox.Text;
+                    displayTextBox.Text = currentTextOuter.Substring(0, currentTextOuter.Length - charsToCut) + 
                                           functionName + "(";
                     
                     // Reset buffer since we've processed this function
@@ -664,41 +807,35 @@ namespace RowHighligher
 
         private void HandleOperation(string operation)
         {
-            if (isExpressionMode)
+            // Always allow operators after a result or in expression mode
+            if (operation == "-" && (isNewCalculation || displayTextBox.Text == "0"))
             {
-                // In expression mode, just append the operator but with proper spacing
-                displayTextBox.Text += " " + operation + " ";
-                
-                // Important: Don't call FormatDisplayText() here which would interfere with functions
-                // but we do want to ensure the operator is visible
-                
-                // Always set cursor to end
-                SetCursorToEnd();
+                // Special case for negative numbers at start
+                displayTextBox.Text = operation;
+                isNewCalculation = false;
             }
-            else if (!isNewCalculation)
+            else if (isNewCalculation)
             {
-                // Your existing code...
-                if (lastOperation != "")
-                {
-                    CalculateResult();
-                }
-
-                lastValue = double.Parse(displayTextBox.Text);
+                // If starting fresh with non-negative operator, prepend 0
+                displayTextBox.Text = "0 " + operation + " ";
                 lastOperation = operation;
-
-                // Show the operation in the display
-                displayTextBox.Text += " " + operation + " ";
                 isNewCalculation = false;
             }
             else
             {
-                // Your existing code...
+                // For continuing an expression or after result
+                displayTextBox.Text += " " + operation + " ";
+                lastOperation = operation;
+                isNewCalculation = false;
             }
+            
+            SetCursorToEnd();
         }
 
         private void EqualsButton_Click(object sender, EventArgs e)
         {
             CalculateResult();
+            lastValue = lastAnswer; // Store the last calculated result in lastValue
         }
 
         private void CalculateResult()
@@ -710,66 +847,40 @@ namespace RowHighligher
                     return; // No calculation needed
                 }
 
-                // Single check for balanced parentheses using the more reliable method
                 if (!HasBalancedParentheses(displayTextBox.Text))
                 {
-                    // Only show error for actual expressions that contain parentheses
                     if (displayTextBox.Text.Contains("(") || displayTextBox.Text.Contains(")"))
                     {
                         MessageBox.Show("Expression has unbalanced parentheses. Please close all open brackets.",
                             "Syntax Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        // Reset the bracket count to match reality
                         bracketCount = CountOpenParentheses(displayTextBox.Text);
                         return;
                     }
                 }
 
-
-
-                // Reset expression mode and bracket count if parentheses are balanced
                 isExpressionMode = false;
                 bracketCount = 0;
 
-                // Prepare the expression for calculation - use our improved function
-                string expression = PrepareExpressionForEvaluation(displayTextBox.Text);
+                double result = ExpressionEvaluator.Evaluate(displayTextBox.Text, decimalPlaces);
+                lastAnswer = result;
+                displayTextBox.Text = result.ToString($"F{decimalPlaces}");
 
-                // Debug the expression to see what we're calculating
-                // Uncomment this line when testing
-                // DebugExpression(expression);
-
-                // Use DataTable to evaluate the expression
-                DataTable dt = new DataTable();
-                var result = dt.Compute(expression, "");
-
-                // Process and display the result
-                if (result is DBNull)
-                {
-                    displayTextBox.Text = "Error";
-                }
-                else
-                {
-                    double calculatedValue = Convert.ToDouble(result);
-                    displayTextBox.Text = calculatedValue.ToString();
-                    lastAnswer = calculatedValue; // Store the last answer
-                }
-
-                // Reset state
                 lastOperation = "";
                 isNewCalculation = true;
-                isExpressionMode = false;
-                bracketCount = 0;
-
                 SetCursorToEnd();
-
             }
             catch (Exception ex)
             {
-                displayTextBox.Text = "Error";
-                isNewCalculation = true;
-                isExpressionMode = false;
-                MessageBox.Show($"Error calculating result: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowError("Error calculating result: " + ex.Message);
             }
+        }
+
+        private void ShowError(string message)
+        {
+            displayTextBox.Text = "Error";
+            isNewCalculation = true;
+            isExpressionMode = false;
+            MessageBox.Show(message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         // Add this helper method to count open parentheses
@@ -786,7 +897,11 @@ namespace RowHighligher
 
         private string PrepareExpressionForEvaluation(string expression)
         {
-            // First, handle any ^ (power) operations
+            // Replace symbolic constants with their values before evaluation
+            expression = expression.Replace("π", PI.ToString());
+            expression = expression.Replace("e", E.ToString());
+
+            // Rest of the method remains the same...
             while (expression.Contains("^"))
             {
                 int powerIndex = expression.IndexOf("^");
@@ -823,7 +938,7 @@ namespace RowHighligher
                 double powerResult = Math.Pow(baseValue, exponentValue);
                 
                 // Replace the power expression with the result
-                string replacement = "(" + powerResult.ToString() + ")";
+                string replacement = "(" + powerResult.ToString($"F{decimalPlaces}") + ")";
                 expression = expression.Substring(0, baseStartIndex) + 
                              replacement + 
                              expression.Substring(exponentEndIndex);
@@ -835,7 +950,9 @@ namespace RowHighligher
 
             try {
                 // Process functions one at a time
-                while (expression.Contains("sqrt(") || expression.Contains("sin(") || expression.Contains("cos("))
+                while (expression.Contains("sqrt(") || expression.Contains("sin(") || 
+                       expression.Contains("cos(") || expression.Contains("tan(") ||
+                       expression.Contains("log(") || expression.Contains("ln("))
                 {
                     // Process sqrt functions
                     int sqrtIdx = expression.IndexOf("sqrt(");
@@ -870,7 +987,7 @@ namespace RowHighligher
                             double sqrtValue = Math.Sqrt(innerValue);
                             
                             // KEY FIX: Add parentheses around the result to ensure proper operator precedence
-                            string replacement = "(" + sqrtValue.ToString() + ")";
+                            string replacement = "(" + sqrtValue.ToString($"F{decimalPlaces}") + ")";
                             expression = expression.Substring(0, sqrtIdx) + replacement + expression.Substring(closeIdx);
                             
                             // Since we've modified the expression, we need to process it again
@@ -910,7 +1027,7 @@ namespace RowHighligher
                             double sinValue = Math.Sin(innerValue);
                             
                             // Replace with result (in parentheses)
-                            string replacement = "(" + sinValue.ToString() + ")";
+                            string replacement = "(" + sinValue.ToString($"F{decimalPlaces}") + ")";
                             expression = expression.Substring(0, sinIdx) + replacement + expression.Substring(closeIdx);
                             
                             // Process the updated expression
@@ -945,8 +1062,124 @@ namespace RowHighligher
                             double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
                             double cosValue = Math.Cos(innerValue);
                             
-                            string replacement = "(" + cosValue.ToString() + ")";
+                            string replacement = "(" + cosValue.ToString($"F{decimalPlaces}") + ")";
                             expression = expression.Substring(0, cosIdx) + replacement + expression.Substring(closeIdx);
+                            
+                            return PrepareExpressionForEvaluation(expression);
+                        }
+                    }
+
+                    // Process tan functions
+                    int tanIdx = expression.IndexOf("tan(");
+                    if (tanIdx >= 0)
+                    {
+                        int openCount = 1;
+                        int closeIdx = tanIdx + 4;  // Start after "tan(")
+                        
+                        while (openCount > 0 && closeIdx < expression.Length)
+                        {
+                            if (expression[closeIdx] == '(') openCount++;
+                            if (expression[closeIdx] == ')') openCount--;
+                            closeIdx++;
+                        }
+                        
+                        if (openCount == 0)
+                        {
+                            string innerExpr = expression.Substring(tanIdx + 4, closeIdx - tanIdx - 5);
+                            
+                            if (innerExpr.Contains("sqrt(") || innerExpr.Contains("sin(") || 
+                                innerExpr.Contains("cos(") || innerExpr.Contains("tan(") ||
+                                innerExpr.Contains("log(") || innerExpr.Contains("ln("))
+                            {
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                            }
+                            
+                            DataTable dt = new DataTable();
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            double tanValue = Math.Tan(innerValue);
+                            
+                            string replacement = "(" + tanValue.ToString($"F{decimalPlaces}") + ")";
+                            expression = expression.Substring(0, tanIdx) + replacement + expression.Substring(closeIdx);
+                            
+                            return PrepareExpressionForEvaluation(expression);
+                        }
+                    }
+
+                    // Process log functions (base 10)
+                    int logIdx = expression.IndexOf("log(");
+                    if (logIdx >= 0)
+                    {
+                        int openCount = 1;
+                        int closeIdx = logIdx + 4;  // Start after "log("
+                        
+                        while (openCount > 0 && closeIdx < expression.Length)
+                        {
+                            if (expression[closeIdx] == '(') openCount++;
+                            if (expression[closeIdx] == ')') openCount--;
+                            closeIdx++;
+                        }
+                        
+                        if (openCount == 0)
+                        {
+                            string innerExpr = expression.Substring(logIdx + 4, closeIdx - logIdx - 5);
+                            
+                            if (innerExpr.Contains("sqrt(") || innerExpr.Contains("sin(") || 
+                                innerExpr.Contains("cos(") || innerExpr.Contains("tan(") ||
+                                innerExpr.Contains("log(") || innerExpr.Contains("ln("))
+                            {
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                            }
+                            
+                            DataTable dt = new DataTable();
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            if (innerValue <= 0)
+                            {
+                                throw new ArgumentException("Cannot calculate logarithm of zero or negative number");
+                            }
+                            double logValue = Math.Log10(innerValue);
+                            
+                            string replacement = "(" + logValue.ToString($"F{decimalPlaces}") + ")";
+                            expression = expression.Substring(0, logIdx) + replacement + expression.Substring(closeIdx);
+                            
+                            return PrepareExpressionForEvaluation(expression);
+                        }
+                    }
+
+                    // Process ln functions (natural logarithm)
+                    int lnIdx = expression.IndexOf("ln(");
+                    if (lnIdx >= 0)
+                    {
+                        int openCount = 1;
+                        int closeIdx = lnIdx + 3;  // Start after "ln("
+                        
+                        while (openCount > 0 && closeIdx < expression.Length)
+                        {
+                            if (expression[closeIdx] == '(') openCount++;
+                            if (expression[closeIdx] == ')') openCount--;
+                            closeIdx++;
+                        }
+                        
+                        if (openCount == 0)
+                        {
+                            string innerExpr = expression.Substring(lnIdx + 3, closeIdx - lnIdx - 4);
+                            
+                            if (innerExpr.Contains("sqrt(") || innerExpr.Contains("sin(") || 
+                                innerExpr.Contains("cos(") || innerExpr.Contains("tan(") ||
+                                innerExpr.Contains("log(") || innerExpr.Contains("ln("))
+                            {
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                            }
+                            
+                            DataTable dt = new DataTable();
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            if (innerValue <= 0)
+                            {
+                                throw new ArgumentException("Cannot calculate natural logarithm of zero or negative number");
+                            }
+                            double lnValue = Math.Log(innerValue);  // Natural logarithm
+                            
+                            string replacement = "(" + lnValue.ToString($"F{decimalPlaces}") + ")";
+                            expression = expression.Substring(0, lnIdx) + replacement + expression.Substring(closeIdx);
                             
                             return PrepareExpressionForEvaluation(expression);
                         }
@@ -985,8 +1218,57 @@ namespace RowHighligher
             Button button = (Button)sender;
             string operation = button.Tag.ToString();
 
+            // Handle constants
+            if (operation == "π")
+            {
+                if (isNewCalculation || displayTextBox.Text == "0")
+                {
+                    displayTextBox.Text = "π";  // Changed from PI.ToString() to "π"
+                }
+                else
+                {
+                    displayTextBox.Text += "π";  // Changed from PI.ToString() to "π"
+                }
+                isNewCalculation = false;
+                SetCursorToEnd();
+                return;
+            }
+            else if (operation == "e")
+            {
+                if (isNewCalculation || displayTextBox.Text == "0")
+                {
+                    displayTextBox.Text = "e";  // Changed from E.ToString() to "e"
+                }
+                else
+                {
+                    displayTextBox.Text += "e";  // Changed from E.ToString() to "e"
+                }
+                isNewCalculation = false;
+                SetCursorToEnd();
+                return;
+            }
+            else if (operation == "deg_to_rad" || operation == "rad_to_deg")
+            {
+                double value;
+                if (double.TryParse(displayTextBox.Text, out value))
+                {
+                    if (operation == "deg_to_rad")
+                    {
+                        value *= DEG_TO_RAD;
+                    }
+                    else
+                    {
+                        value *= RAD_TO_DEG;
+                    }
+                    displayTextBox.Text = value.ToString();
+                    isNewCalculation = true;
+                }
+                return;
+            }
+
             // Handle functions that require parentheses
-            if (operation == "sqrt" || operation == "sin" || operation == "cos")
+            if (operation == "sqrt" || operation == "sin" || operation == "cos" || 
+                operation == "tan" || operation == "log" || operation == "ln")
             {
                 // Start or continue an expression with this function
                 if (isNewCalculation || displayTextBox.Text == "0")
@@ -1208,7 +1490,7 @@ namespace RowHighligher
         private void ClearEntryButton_Click(object sender, EventArgs e)
         {
             displayTextBox.Text = "0";
-            lastValue = 0;
+            lastValue = 0; // Reset lastValue when clearing entry
             lastOperation = "";
             isNewCalculation = true;
             isExpressionMode = false;
@@ -1251,6 +1533,214 @@ namespace RowHighligher
             {
                 MessageBox.Show($"Expression error: {expression}\n{ex.Message}");
             }
+        }
+
+        // Add F1 key handler
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.F1)
+            {
+                ShowHelp();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private void HelpButton_Click(object sender, EventArgs e)
+        {
+            ShowHelp();
+        }
+
+        private void ShowHelp()
+        {
+            using (var helpForm = new CalculatorHelpForm())
+            {
+                helpForm.ShowDialog(this);
+            }
+        }
+
+        // Update this method to save settings
+        private void SettingsButton_Click(object sender, EventArgs e)
+        {
+            using (var settingsForm = new CalculatorSettingsForm())
+            {
+                settingsForm.Owner = this;  // Set the calculator as the owner
+                settingsForm.DecimalPlaces = this.decimalPlaces;
+                if (settingsForm.ShowDialog(this) == DialogResult.OK)  // Use ShowDialog(this)
+                {
+                    this.decimalPlaces = settingsForm.DecimalPlaces;
+                    
+                    // Save the setting when it changes
+                    Properties.Settings.Default.CalculatorDecimalPlaces = this.decimalPlaces;
+                    Properties.Settings.Default.Save();
+                    
+                    // If there's a number currently displayed, reformat it with the new decimal places
+                    if (double.TryParse(displayTextBox.Text, out double currentValue))
+                    {
+                        displayTextBox.Text = currentValue.ToString($"F{decimalPlaces}");
+                    }
+                }
+            }
+        }
+    }
+
+    // Create a new class for the settings form
+    public class CalculatorSettingsForm : Form
+    {
+        private NumericUpDown decimalPlacesInput;
+        private int decimalPlaces;
+
+        public int DecimalPlaces
+        {
+            get { return decimalPlaces; }
+            set 
+            { 
+                decimalPlaces = value;
+                Properties.Settings.Default.CalculatorDecimalPlaces = value;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        public CalculatorSettingsForm()
+        {
+            this.Text = "General Settings";
+            this.Size = new Size(400, 200);
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.TopMost = true;  // Add this line to make settings always on top
+
+            TableLayoutPanel mainPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(10),
+                RowCount = 2,
+                ColumnCount = 2
+            };
+
+            Label decimalLabel = new Label
+            {
+                Text = "Choose decimal places:",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            // Load from settings when creating input
+            decimalPlacesInput = new NumericUpDown
+            {
+                Minimum = 0,
+                Maximum = 10,
+                Value = Properties.Settings.Default.CalculatorDecimalPlaces,
+                Width = 60
+            };
+            decimalPlaces = Properties.Settings.Default.CalculatorDecimalPlaces;
+            decimalPlacesInput.ValueChanged += (s, e) => decimalPlaces = (int)decimalPlacesInput.Value;
+
+            mainPanel.Controls.Add(decimalLabel, 0, 0);
+            mainPanel.Controls.Add(decimalPlacesInput, 1, 0);
+
+            Button saveButton = new Button
+            {
+                Text = "Save",
+                DialogResult = DialogResult.OK,
+                Anchor = AnchorStyles.Right
+            };
+            
+            // Save settings when clicking save
+            saveButton.Click += (s, e) => 
+            { 
+                Properties.Settings.Default.CalculatorDecimalPlaces = decimalPlaces;
+                Properties.Settings.Default.Save();
+            };
+            
+            mainPanel.Controls.Add(saveButton, 1, 1);
+
+            this.Controls.Add(mainPanel);
+        }
+    }
+
+    public static class ExpressionEvaluator
+    {
+        public static double Evaluate(string expression, int decimalPlaces)
+        {
+            // Replace symbolic constants
+            expression = expression.Replace("π", Math.PI.ToString());
+            expression = expression.Replace("e", Math.E.ToString());
+
+            // Handle power operator ^
+            while (expression.Contains("^"))
+            {
+                int powerIndex = expression.IndexOf("^");
+                int baseStartIndex = powerIndex - 1;
+                while (baseStartIndex >= 0 && (char.IsDigit(expression[baseStartIndex]) || expression[baseStartIndex] == '.' || expression[baseStartIndex] == ')'))
+                    baseStartIndex--;
+                baseStartIndex++;
+                int exponentEndIndex = powerIndex + 1;
+                while (exponentEndIndex < expression.Length && (char.IsDigit(expression[exponentEndIndex]) || expression[exponentEndIndex] == '.' || expression[exponentEndIndex] == '('))
+                    exponentEndIndex++;
+                string baseStr = expression.Substring(baseStartIndex, powerIndex - baseStartIndex);
+                string exponentStr = expression.Substring(powerIndex + 1, exponentEndIndex - powerIndex - 1);
+                DataTable dt = new DataTable();
+                double baseValue = Convert.ToDouble(dt.Compute(baseStr, ""));
+                double exponentValue = Convert.ToDouble(dt.Compute(exponentStr, ""));
+                double powerResult = Math.Pow(baseValue, exponentValue);
+                string replacement = "(" + powerResult.ToString($"F{decimalPlaces}") + ")";
+                expression = expression.Substring(0, baseStartIndex) + replacement + expression.Substring(exponentEndIndex);
+            }
+
+            expression = expression.Replace(" ", "").Replace("×", "*").Replace("÷", "/");
+
+            // Evaluate functions recursively
+            expression = EvaluateFunctions(expression, decimalPlaces);
+
+            DataTable dtFinal = new DataTable();
+            return Convert.ToDouble(dtFinal.Compute(expression, ""));
+        }
+
+        private static string EvaluateFunctions(string expression, int decimalPlaces)
+        {
+            string[] functions = { "sqrt", "sin", "cos", "tan", "log", "ln" };
+            foreach (var func in functions)
+            {
+                while (expression.Contains(func + "("))
+                {
+                    int idx = expression.IndexOf(func + "(");
+                    int openCount = 1;
+                    int closeIdx = idx + func.Length + 1;
+                    while (openCount > 0 && closeIdx < expression.Length)
+                    {
+                        if (expression[closeIdx] == '(') openCount++;
+                        if (expression[closeIdx] == ')') openCount--;
+                        closeIdx++;
+                    }
+                    if (openCount == 0)
+                    {
+                        string innerExpr = expression.Substring(idx + func.Length + 1, closeIdx - idx - func.Length - 2);
+                        innerExpr = EvaluateFunctions(innerExpr, decimalPlaces);
+                        DataTable dt = new DataTable();
+                        double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                        double result = 0;
+                        switch (func)
+                        {
+                            case "sqrt": result = Math.Sqrt(innerValue); break;
+                            case "sin": result = Math.Sin(innerValue); break;
+                            case "cos": result = Math.Cos(innerValue); break;
+                            case "tan": result = Math.Tan(innerValue); break;
+                            case "log": result = Math.Log10(innerValue); break;
+                            case "ln": result = Math.Log(innerValue); break;
+                        }
+                        string replacement = "(" + result.ToString($"F{decimalPlaces}") + ")";
+                        expression = expression.Substring(0, idx) + replacement + expression.Substring(closeIdx);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            return expression;
         }
     }
 }
