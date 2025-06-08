@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="Ribbon_Load">
   <ribbon>
     <tabs>
-      <tab id="tabRowHighlighter" label="BPAL Tools">
+      <tab id="tabRowHighlighter" label="Row Highlighter">
         <group id="groupHighlighterSettings" label="Highlighter Settings">
           <toggleButton id="toggleEnableHighlighter"
                         label="Enable Row Highlighter"
@@ -30,9 +30,9 @@
                     onAction="OnCustomFontColor_Click"/>
           <button id="buttonChangeFontColor"
                   label="Font Color"
-                  size="large"
+                  size="normal"
                   onAction="OnChangeFontColor_Click"
-                  imageMso="ColorMenu"
+                  imageMso="ColorPickerFontColor"
                   getEnabled="GetChangeFontColor_Enabled"/>
         </group>
         <group id="groupCalculator" label="Scientific Calculator">
@@ -40,26 +40,14 @@
                   label="Scientific Calculator"
                   size="large"
                   onAction="OnShowCalculator_Click"
-                  imageMso="Calculator"/>
+                  imageMso="CalculatorLarge"/>
           <checkBox id="checkboxDetachCalculator"
-                    label="Keep Calculator on Top"
+                    label="Detach Calculator"
                     getPressed="GetDetachCalculator_Pressed"
                     onAction="OnDetachCalculator_Click"/>
-        </group>
-        <group id="groupConverter" label="Units Converter">
-          <button id="buttonShowConverter"
-                  label="Units Converter"
-                  size="large"
-                  onAction="OnShowConverter_Click"
-                  imageMso="ConvertTextToTable"/>
-          <checkBox id="checkboxDetachConverter"
-                    label="Keep Converter on Top"
-                    getPressed="GetDetachConverter_Pressed"
-                    onAction="OnDetachConverter_Click"/>
         </group>
       </tab>
     </tabs>
   </ribbon>
 </customUI>
-
 

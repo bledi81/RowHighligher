@@ -5,6 +5,8 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Windows.Forms;
+using System.Drawing;
 using Office = Microsoft.Office.Core;
 
 namespace RowHighligher
@@ -13,6 +15,8 @@ namespace RowHighligher
     public class Ribbon1 : Office.IRibbonExtensibility
     {
         private Office.IRibbonUI ribbon;
+        private ScientificCalculator calculator;
+        private UnitsConverterForm unitsConverter;
 
         public Ribbon1()
         {
@@ -35,6 +39,11 @@ namespace RowHighligher
             if (this.ribbon != null)
             {
                 this.ribbon.InvalidateControl("toggleEnableHighlighter"); 
+                this.ribbon.InvalidateControl("checkboxPlaceRuleOnTop");
+                this.ribbon.InvalidateControl("checkboxMakeRuleBold");
+                this.ribbon.InvalidateControl("checkboxCustomFontColor");
+                this.ribbon.InvalidateControl("buttonChangeFontColor");
+                this.ribbon.InvalidateControl("checkboxDetachCalculator");
             }
         }
 
@@ -61,6 +70,153 @@ namespace RowHighligher
         {
             ribbon?.InvalidateControl("toggleEnableHighlighter"); 
         }
+
+        #region New UI Handlers
+
+        public void OnPlaceRuleOnTop_Click(Office.IRibbonControl control, bool isPressed)
+        {
+            Properties.Settings.Default.PlaceRuleOnTop = isPressed;
+            Properties.Settings.Default.Save();
+            
+            // Re-apply highlighting if enabled
+            if (Globals.ThisAddIn.IsHighlighterEnabled)
+            {
+                Globals.ThisAddIn.ReapplyHighlighting();
+            }
+        }
+
+        public bool GetPlaceRuleOnTop_Pressed(Office.IRibbonControl control)
+        {
+            return Properties.Settings.Default.PlaceRuleOnTop;
+        }
+
+        public void OnMakeRuleBold_Click(Office.IRibbonControl control, bool isPressed)
+        {
+            Properties.Settings.Default.MakeRuleBold = isPressed;
+            Properties.Settings.Default.Save();
+            
+            // Re-apply highlighting if enabled
+            if (Globals.ThisAddIn.IsHighlighterEnabled)
+            {
+                Globals.ThisAddIn.ReapplyHighlighting();
+            }
+        }
+
+        public bool GetMakeRuleBold_Pressed(Office.IRibbonControl control)
+        {
+            return Properties.Settings.Default.MakeRuleBold;
+        }
+
+        public void OnCustomFontColor_Click(Office.IRibbonControl control, bool isPressed)
+        {
+            Properties.Settings.Default.CustomFontColorEnabled = isPressed;
+            Properties.Settings.Default.Save();
+            
+            // Invalidate the font color button to update its enabled state
+            if (this.ribbon != null)
+            {
+                this.ribbon.InvalidateControl("buttonChangeFontColor");
+            }
+            
+            // Re-apply highlighting if enabled
+            if (Globals.ThisAddIn.IsHighlighterEnabled)
+            {
+                Globals.ThisAddIn.ReapplyHighlighting();
+            }
+        }
+
+        public bool GetCustomFontColor_Pressed(Office.IRibbonControl control)
+        {
+            return Properties.Settings.Default.CustomFontColorEnabled;
+        }
+
+        public void OnChangeFontColor_Click(Office.IRibbonControl control)
+        {
+            using (ColorDialog colorDialog = new ColorDialog())
+            {
+                colorDialog.Color = Properties.Settings.Default.CustomFontColor;
+                colorDialog.AllowFullOpen = true;
+                colorDialog.FullOpen = true;
+                if (colorDialog.ShowDialog() == DialogResult.OK)
+                {
+                    Properties.Settings.Default.CustomFontColor = colorDialog.Color;
+                    Properties.Settings.Default.Save();
+
+                    // Re-apply highlighting if enabled and using custom font color
+                    if (Globals.ThisAddIn.IsHighlighterEnabled && Properties.Settings.Default.CustomFontColorEnabled)
+                    {
+                        Globals.ThisAddIn.ReapplyHighlighting();
+                    }
+                }
+            }
+        }
+
+        public bool GetChangeFontColor_Enabled(Office.IRibbonControl control)
+        {
+            return Properties.Settings.Default.CustomFontColorEnabled;
+        }
+
+        public void OnShowCalculator_Click(Office.IRibbonControl control)
+        {
+            if (calculator == null || calculator.IsDisposed)
+            {
+                calculator = new ScientificCalculator();
+                calculator.FormClosed += (s, e) => calculator = null;
+                calculator.Show();
+            }
+            else
+            {
+                calculator.Activate();
+            }
+        }
+
+        public void OnDetachCalculator_Click(Office.IRibbonControl control, bool isPressed)
+        {
+            Properties.Settings.Default.IsCalculatorDetached = isPressed;
+            Properties.Settings.Default.Save();
+            
+            if (calculator != null && !calculator.IsDisposed)
+            {
+                calculator.TopMost = isPressed;
+            }
+        }
+
+        public bool GetDetachCalculator_Pressed(Office.IRibbonControl control)
+        {
+            return Properties.Settings.Default.IsCalculatorDetached;
+        }
+
+        public void OnShowConverter_Click(Office.IRibbonControl control)
+        {
+            if (unitsConverter == null || unitsConverter.IsDisposed)
+            {
+                unitsConverter = new UnitsConverterForm();
+                unitsConverter.TopMost = Properties.Settings.Default.IsConverterDetached;
+                unitsConverter.FormClosed += (s, e) => unitsConverter = null;
+                unitsConverter.Show();
+            }
+            else
+            {
+                unitsConverter.Activate();
+            }
+        }
+
+        public void OnDetachConverter_Click(Office.IRibbonControl control, bool isPressed)
+        {
+            Properties.Settings.Default.IsConverterDetached = isPressed;
+            Properties.Settings.Default.Save();
+            if (unitsConverter != null && !unitsConverter.IsDisposed)
+            {
+                unitsConverter.TopMost = isPressed;
+            }
+        }
+
+        public bool GetDetachConverter_Pressed(Office.IRibbonControl control)
+        {
+            return Properties.Settings.Default.IsConverterDetached;
+        }
+
+        #endregion
 
         #endregion
 

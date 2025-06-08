@@ -185,8 +185,18 @@
     can be found.
   -->
   <ItemGroup>
+    <Compile Include="CalculatorHelpForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CalculatorSettingsForm.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="UnitsConverterForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UnitsConvertHelpForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -196,7 +206,11 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="ScientificCalculator.resx">
+      <DependentUpon>ScientificCalculator.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="app.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -208,6 +222,10 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="Ribbon1.cs" />
+    <Compile Include="ScientificCalculator.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Settings.cs" />
     <Compile Include="ThisAddIn.cs">
       <SubType>Code</SubType>
     </Compile>
