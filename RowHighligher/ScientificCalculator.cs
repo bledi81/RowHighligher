@@ -100,7 +100,7 @@ namespace RowHighligher
                 Dock = DockStyle.Fill,
                 RowCount = 6,         // Reduced to 6 rows
                 ColumnCount = 1,
-                Padding = new Padding(5)
+                Padding = new Padding(10)
             };
 
             // Update row styles for better proportions

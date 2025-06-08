@@ -14,10 +14,7 @@ namespace RowHighligher
         public Ribbon1 RibbonInstance { get; private set; }
         private const string ADDIN_CF_FORMULA = "=ROW()=ROW()+N(\"RowHighlighterAddInRule_v1.1\")";
 
-        private bool wasHighlighterEnabledBeforeSave = false;
-
-        // In the Calculator will use parenthesis to evaluate the expression correctly
-        
+        private bool wasHighlighterEnabledBeforeSave = false;        
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
@@ -204,7 +201,6 @@ namespace RowHighligher
             }
         }
         
-        // This method can be called when settings change to reapply highlighting to the current selection
         public void ReapplyHighlighting()
         {
             if (this.IsHighlighterEnabled)

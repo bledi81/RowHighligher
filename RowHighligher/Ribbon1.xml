@@ -46,6 +46,17 @@
                     getPressed="GetDetachCalculator_Pressed"
                     onAction="OnDetachCalculator_Click"/>
         </group>
+        <group id="groupConverter" label="Units Converter">
+          <button id="buttonShowConverter"
+                  label="Units Converter"
+                  size="large"
+                  onAction="OnShowConverter_Click"
+                  imageMso="ConvertTextToTable"/>
+          <checkBox id="checkboxDetachConverter"
+                    label="Keep Converter on Top"
+                    getPressed="GetDetachConverter_Pressed"
+                    onAction="OnDetachConverter_Click"/>
+        </group>
       </tab>
     </tabs>
   </ribbon>

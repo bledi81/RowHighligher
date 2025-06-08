@@ -118,5 +118,17 @@ namespace RowHighligher.Properties {
                 this["CalculatorDecimalPlaces"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool IsConverterDetached {
+            get {
+                return ((bool)(this["IsConverterDetached"]));
+            }
+            set {
+                this["IsConverterDetached"] = value;
+            }
+        }
     }
 }

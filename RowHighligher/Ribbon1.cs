@@ -16,6 +16,7 @@ namespace RowHighligher
     {
         private Office.IRibbonUI ribbon;
         private ScientificCalculator calculator;
+        private UnitsConverterForm unitsConverter;
 
         public Ribbon1()
         {
@@ -183,6 +184,36 @@ namespace RowHighligher
         public bool GetDetachCalculator_Pressed(Office.IRibbonControl control)
         {
             return Properties.Settings.Default.IsCalculatorDetached;
+        }
+
+        public void OnShowConverter_Click(Office.IRibbonControl control)
+        {
+            if (unitsConverter == null || unitsConverter.IsDisposed)
+            {
+                unitsConverter = new UnitsConverterForm();
+                unitsConverter.TopMost = Properties.Settings.Default.IsConverterDetached;
+                unitsConverter.FormClosed += (s, e) => unitsConverter = null;
+                unitsConverter.Show();
+            }
+            else
+            {
+                unitsConverter.Activate();
+            }
+        }
+
+        public void OnDetachConverter_Click(Office.IRibbonControl control, bool isPressed)
+        {
+            Properties.Settings.Default.IsConverterDetached = isPressed;
+            Properties.Settings.Default.Save();
+            if (unitsConverter != null && !unitsConverter.IsDisposed)
+            {
+                unitsConverter.TopMost = isPressed;
+            }
+        }
+
+        public bool GetDetachConverter_Pressed(Office.IRibbonControl control)
+        {
+            return Properties.Settings.Default.IsConverterDetached;
         }
 
         #endregion
