@@ -4,6 +4,7 @@ using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using System.Text;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace RowHighligher
@@ -17,6 +18,7 @@ namespace RowHighligher
         private TextBox resultTextBox;
         private Button insertButton;
         private Button getFromCellButton;
+        private Button helpButton;
         private Label inputLabel;
         private Label resultLabel;
         private ComboBox categoryComboBox;
@@ -43,7 +45,7 @@ namespace RowHighligher
             this.FormBorderStyle = FormBorderStyle.Sizable;
             
             // Set the current size as the minimum size
-            this.MinimumSize = new Size(500, 330);
+            this.MinimumSize = new Size(600, 330);
             
             // Allow minimizing and maximizing
             this.MaximizeBox = true;
@@ -65,8 +67,8 @@ namespace RowHighligher
             // Use percentage-based column styles
             controlsPanel.ColumnStyles.Clear();
             controlsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); // Label/input/result (keep fixed width for labels)
-            controlsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); // Main input/result column
-            controlsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); // Third column
+            controlsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40)); // Main input/result column
+            controlsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60)); // Third column
             
             // Use percentage-based row styles instead of absolute
             controlsPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 16)); // Category (~40px at default size)
@@ -113,7 +115,7 @@ namespace RowHighligher
             convertButton.Click += ConvertButton_Click;
             controlsPanel.Controls.Add(convertButton, 1, 3);
 
-            // Add the Swap Units button in the same row
+            // Add the Swap Units button in the same row with proper Unicode arrows
             Button swapUnitsButton = new Button 
             { 
                 Text = "↑↓ Swap Units", 
@@ -136,8 +138,22 @@ namespace RowHighligher
             insertButton.Click += InsertButton_Click;
             controlsPanel.Controls.Add(insertButton, 2, 5);
 
+            // Help button (new)
+            helpButton = new Button { Text = "Help", Dock = DockStyle.Fill, Font = smallFont };
+            helpButton.Click += HelpButton_Click;
+            controlsPanel.Controls.Add(helpButton, 0, 5);
+
             mainPanel.Controls.Add(controlsPanel, 0, 0);
             this.Controls.Add(mainPanel);
+        }
+
+        private void HelpButton_Click(object sender, EventArgs e)
+        {
+            // Create and show the help form
+            using (var helpForm = new UnitsConvertHelpForm())
+            {
+                helpForm.ShowDialog(this);
+            }
         }
 
         private void LoadUnits()
@@ -147,11 +163,15 @@ namespace RowHighligher
             var cat = Categories[categoryComboBox.SelectedIndex];
             fromUnitComboBox.Items.Clear();
             toUnitComboBox.Items.Clear();
-            foreach (var unit in cat.Units.Keys)
+            
+            foreach (var unitName in cat.Units.Keys)
             {
-                fromUnitComboBox.Items.Add(unit);
-                toUnitComboBox.Items.Add(unit);
+                string symbol = cat.UnitSymbols[unitName];
+                var unitItem = new UnitItem(unitName, symbol);
+                fromUnitComboBox.Items.Add(unitItem);
+                toUnitComboBox.Items.Add(unitItem);
             }
+            
             if (fromUnitComboBox.Items.Count > 0) fromUnitComboBox.SelectedIndex = 0;
             if (toUnitComboBox.Items.Count > 1) toUnitComboBox.SelectedIndex = 1;
         }
@@ -229,8 +249,11 @@ namespace RowHighligher
                 return;
             
             // Swap the units
-            fromUnitComboBox.SelectedItem = toUnit;
-            toUnitComboBox.SelectedItem = fromUnit;
+            int fromIndex = fromUnitComboBox.SelectedIndex;
+            int toIndex = toUnitComboBox.SelectedIndex;
+            
+            fromUnitComboBox.SelectedIndex = toIndex;
+            toUnitComboBox.SelectedIndex = fromIndex;
             
             // If there's a value in the result, move it to the input
             if (!string.IsNullOrEmpty(resultTextBox.Text))
@@ -252,14 +275,15 @@ namespace RowHighligher
                 return;
             }
             
-            string fromUnit = fromUnitComboBox.SelectedItem?.ToString();
-            string toUnit = toUnitComboBox.SelectedItem?.ToString();
-            
-            if (string.IsNullOrEmpty(fromUnit) || string.IsNullOrEmpty(toUnit))
+            if (!(fromUnitComboBox.SelectedItem is UnitItem fromUnitItem) || 
+                !(toUnitComboBox.SelectedItem is UnitItem toUnitItem))
             {
                 MessageBox.Show("Please select both units.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+            
+            string fromUnit = fromUnitItem.Name;
+            string toUnit = toUnitItem.Name;
             
             try
             {
@@ -280,43 +304,144 @@ namespace RowHighligher
         {
             return new List<UnitCategory>
             {
-                new UnitCategory("Length", new Dictionary<string, double>
-                {
-                    {"meter", 1.0},
-                    {"kilometer", 1000.0},
-                    {"foot", 0.3048},
-                    {"inch", 0.0254},
-                    {"mile", 1609.344}
-                }),
-                new UnitCategory("Volume", new Dictionary<string, double>
-                {
-                    {"liter", 1.0},
-                    {"cubic meter", 1000.0},
-                    {"US gallon", 3.78541},
-                    {"barrel (oil)", 158.987},
-                    {"cubic foot", 28.3168}
-                }),
-                new UnitCategory("Mass", new Dictionary<string, double>
-                {
-                    {"kilogram", 1.0},
-                    {"metric ton", 1000.0},
-                    {"short ton", 907.185},
-                    {"long ton", 1016.05},
-                    {"pound", 0.453592}
-                }),
-                new UnitCategory("Pressure", new Dictionary<string, double>
-                {
-                    {"bar", 1.0},
-                    {"psi", 0.0689476},
-                    {"kPa", 0.01},
-                    {"atm", 1.01325}
-                }),
-                new UnitCategory("Temperature", new Dictionary<string, double>
-                {
-                    {"Celsius", 1.0},
-                    {"Fahrenheit", double.NaN}, // handled specially
-                    {"Kelvin", double.NaN} // handled specially
-                })
+                new UnitCategory("Length", 
+                    new Dictionary<string, double>
+                    {
+                        {"meter", 1.0},
+                        {"kilometer", 1000.0},
+                        {"foot", 0.3048},
+                        {"inch", 0.0254},
+                        {"mile", 1609.344}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"meter", "m"},
+                        {"kilometer", "km"},
+                        {"foot", "ft"},
+                        {"inch", "in"},
+                        {"mile", "mi"}
+                    }),
+                new UnitCategory("Liquid Volume", 
+                    new Dictionary<string, double>
+                    {
+                        {"liter", 1.0},
+                        {"cubic meter", 1000.0},
+                        {"US gallon", 3.78541},
+                        {"barrel (oil)", 158.987},
+                        {"cubic foot", 28.3168}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"liter", "L"},
+                        {"cubic meter", "m³"},
+                        {"US gallon", "gal"},
+                        {"barrel (oil)", "bbl"},
+                        {"cubic foot", "ft³"}
+                    }),
+                new UnitCategory("Gas Volume", 
+                    new Dictionary<string, double>
+                    {
+                        {"standard cubic meter", 1.0},
+                        {"standard cubic foot", 0.0283168},
+                        {"thousand standard cubic feet", 28.3168},
+                        {"million standard cubic feet", 28316.8},
+                        {"billion standard cubic feet", 28316800.0},
+                        {"normal cubic meter", 1.0},
+                        {"million standard cubic meters", 1000000.0}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"standard cubic meter", "Sm³"},
+                        {"standard cubic foot", "scf"},
+                        {"thousand standard cubic feet", "Mscf"},
+                        {"million standard cubic feet", "MMscf"},
+                        {"billion standard cubic feet", "Bscf"},
+                        {"normal cubic meter", "Nm³"},
+                        {"million standard cubic meters", "MMSm³"}
+                    }),
+                new UnitCategory("Mass", 
+                    new Dictionary<string, double>
+                    {
+                        {"kilogram", 1.0},
+                        {"metric ton", 1000.0},
+                        {"short ton", 907.185},
+                        {"long ton", 1016.05},
+                        {"pound", 0.453592}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"kilogram", "kg"},
+                        {"metric ton", "t"},
+                        {"short ton", "ton"},
+                        {"long ton", "long ton"},
+                        {"pound", "lb"}
+                    }),
+                new UnitCategory("Pressure", 
+                    new Dictionary<string, double>
+                    {
+                        {"bar", 1.0},
+                        {"psi", 0.0689476},
+                        {"kPa", 0.01},
+                        {"atm", 1.01325}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"bar", "bar"},
+                        {"psi", "psi"},
+                        {"kPa", "kPa"},
+                        {"atm", "atm"}
+                    }),
+                new UnitCategory("Temperature", 
+                    new Dictionary<string, double>
+                    {
+                        {"Celsius", 1.0},
+                        {"Fahrenheit", double.NaN}, // handled specially
+                        {"Kelvin", double.NaN} // handled specially
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"Celsius", "°C"},
+                        {"Fahrenheit", "°F"},
+                        {"Kelvin", "K"}
+                    }),
+                new UnitCategory("Energy", 
+                    new Dictionary<string, double>
+                    {
+                        {"joule", 1.0},
+                        {"kilojoule", 1000.0},
+                        {"British Thermal Unit", 1055.06},
+                        {"therm", 105506000.0},
+                        {"kilowatt-hour", 3600000.0}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"joule", "J"},
+                        {"kilojoule", "kJ"},
+                        {"British Thermal Unit", "BTU"},
+                        {"therm", "thm"},
+                        {"kilowatt-hour", "kWh"}
+                    }),
+                new UnitCategory("Density", 
+                    new Dictionary<string, double>
+                    {
+                        {"kilogram per cubic meter", 1.0},        // Base unit (SI)
+                        {"gram per cubic centimeter", 1000.0},    // Same as kg/L or g/mL
+                        {"pound per cubic foot", 16.0185},        // lb/ft³
+                        {"pound per gallon", 119.8264},           // lb/gal (US)
+                        {"API gravity", double.NaN},              // Special handling required
+                        {"specific gravity", double.NaN},         // Special handling required
+                        {"pound per barrel", 0.158987 * 119.8264} // lb/bbl
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"kilogram per cubic meter", "kg/m³"},
+                        {"gram per cubic centimeter", "g/cm³"},
+                        {"pound per cubic foot", "lb/ft³"},
+                        {"pound per gallon", "lb/gal"},
+                        {"API gravity", "°API"},
+                        {"specific gravity", "SG"},
+                        {"pound per barrel", "lb/bbl"}
+                    })
             };
         }
 
@@ -329,6 +454,10 @@ namespace RowHighligher
                 {
                     if (cat.Name == "Temperature")
                         return ConvertTemperature(value, fromUnit, toUnit);
+                    else if (cat.Name == "Density" && (fromUnit == "API gravity" || toUnit == "API gravity" || 
+                            fromUnit == "specific gravity" || toUnit == "specific gravity"))
+                        return ConvertDensity(value, fromUnit, toUnit);
+                    
                     // Convert to base (SI) then to target
                     double baseValue = value * cat.Units[fromUnit];
                     return baseValue / cat.Units[toUnit];
@@ -351,16 +480,89 @@ namespace RowHighligher
             if (to == "Kelvin") return celsius + 273.15;
             throw new Exception("Unknown temperature unit");
         }
+
+        private static double ConvertDensity(double value, string from, string to)
+        {
+            // First convert to kg/m³ (base unit)
+            double kgPerM3;
+            
+            if (from == "API gravity")
+            {
+                // API to kg/m³: ρ = 141.5 / (API + 131.5) * 999.0
+                kgPerM3 = 141.5 / (value + 131.5) * 999.0;
+            }
+            else if (from == "specific gravity")
+            {
+                // SG to kg/m³: ρ = SG * 999.0
+                kgPerM3 = value * 999.0; // 999.0 is approx density of water at 15°C in kg/m³
+            }
+            else
+            {
+                // Regular conversion for other units
+                kgPerM3 = from == "kilogram per cubic meter" ? value : 
+                         value * GetDensityFactor(from);
+            }
+            
+            // Now convert from kg/m³ to target unit
+            if (to == "API gravity")
+            {
+                // kg/m³ to API: API = (141.5 / (ρ/999.0)) - 131.5
+                return (141.5 / (kgPerM3/999.0)) - 131.5;
+            }
+            else if (to == "specific gravity")
+            {
+                // kg/m³ to SG: SG = ρ / 999.0
+                return kgPerM3 / 999.0;
+            }
+            else
+            {
+                // Regular conversion for other units
+                return to == "kilogram per cubic meter" ? kgPerM3 : 
+                       kgPerM3 / GetDensityFactor(to);
+            }
+        }
+
+        private static double GetDensityFactor(string unit)
+        {
+            switch(unit)
+            {
+                case "gram per cubic centimeter": return 1000.0;
+                case "pound per cubic foot": return 16.0185;
+                case "pound per gallon": return 119.8264;
+                case "pound per barrel": return 0.158987 * 119.8264;
+                default: throw new Exception($"Unknown density unit: {unit}");
+            }
+        }
     }
 
     public class UnitCategory
     {
         public string Name { get; }
         public Dictionary<string, double> Units { get; }
-        public UnitCategory(string name, Dictionary<string, double> units)
+        public Dictionary<string, string> UnitSymbols { get; } // Add symbols dictionary
+        
+        public UnitCategory(string name, Dictionary<string, double> units, Dictionary<string, string> unitSymbols)
         {
             Name = name;
             Units = units;
+            UnitSymbols = unitSymbols;
+        }
+    }
+
+    public class UnitItem
+    {
+        public string Name { get; }
+        public string Symbol { get; }
+        
+        public UnitItem(string name, string symbol)
+        {
+            Name = name;
+            Symbol = symbol;
+        }
+        
+        public override string ToString()
+        {
+            return $"{Name} [{Symbol}]";
         }
     }
 }
