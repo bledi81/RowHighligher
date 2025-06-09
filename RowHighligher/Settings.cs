@@ -16,7 +16,9 @@
             // this.SettingsSaving += this.SettingsSavingEventHandler;
             //
         }
-        
+
+        public bool IsConverterDetached { get; internal set; }
+
         private void SettingChangingEventHandler(object sender, System.Configuration.SettingChangingEventArgs e) {
             // Add code to handle the SettingChangingEvent event here.
         }

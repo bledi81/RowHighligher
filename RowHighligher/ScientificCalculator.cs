@@ -659,7 +659,7 @@ namespace RowHighligher
                 HandleOperation(e.KeyChar.ToString());
                 e.Handled = true;
             }
-            // Handle decimal point
+            // Handle decimal point - use the improved HandleDecimalPoint method
             else if (e.KeyChar == '.' || e.KeyChar == ',')
             {
                 HandleDecimalPoint();
@@ -790,13 +790,50 @@ namespace RowHighligher
                 displayTextBox.Text = "0.";
                 isNewCalculation = false;
             }
-            else if (!displayTextBox.Text.Contains("."))
+            else
             {
-                displayTextBox.Text += ".";
+                // Check if we need to handle multiple terms
+                string currentText = displayTextBox.Text;
+                
+                // Find operators to identify terms
+                char[] operators = new[] { '+', '-', '*', '/', '×', '÷', '^' };
+                int lastOperatorIndex = -1;
+                
+                // Find the last operator in the expression to identify the current term
+                foreach (char op in operators)
+                {
+                    int index = currentText.LastIndexOf(op);
+                    if (index > lastOperatorIndex)
+                        lastOperatorIndex = index;
+                }
+                
+                // If we have an operator (working with multiple terms)
+                if (lastOperatorIndex >= 0)
+                {
+                    // Extract the current term (everything after the last operator)
+                    string currentTerm = currentText.Substring(lastOperatorIndex + 1).Trim();
+                    
+                    // Only add decimal point if this term doesn't already have one
+                    if (!currentTerm.Contains("."))
+                    {
+                        // If the term is empty, add "0."
+                        if (string.IsNullOrWhiteSpace(currentTerm))
+                            displayTextBox.Text += "0.";
+                        else
+                            displayTextBox.Text += ".";
+                    }
+                }
+                else
+                {
+                    // Working with just the first term
+                    if (!currentText.Contains("."))
+                        displayTextBox.Text += ".";
+                }
             }
-            FormatDisplayText(); // Call to format the display text for better readability
-            displayTextBox.SelectionStart = displayTextBox.Text.Length; // Move cursor to the end
-            displayTextBox.SelectionLength = 0; // Clear selection
+            
+            // Format and set cursor position
+            FormatDisplayText(); 
+            SetCursorToEnd();
         }
 
         private void OperatorButton_Click(object sender, EventArgs e)

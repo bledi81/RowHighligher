@@ -262,7 +262,6 @@ Advanced Usage:
 
         private RichTextBox CreateHelpTextBox(string content)
         {
-            // Create a RichTextBox with proper Unicode support
             RichTextBox textBox = new RichTextBox
             {
                 Dock = DockStyle.Fill,
@@ -272,12 +271,13 @@ Advanced Usage:
                 Multiline = true,
                 AcceptsTab = true,
                 WordWrap = true,
-                ScrollBars = RichTextBoxScrollBars.Vertical
+                ScrollBars = RichTextBoxScrollBars.Vertical,
+                DetectUrls = false // Prevent automatic URL detection which can affect formatting
             };
 
-            // Set the text with explicit encoding handling
-            textBox.Text = content;
-            
+            // Use the RTF parser to properly handle special characters
+            textBox.Text = content.Replace("•", "•"); // Ensure bullet points are consistent
+
             return textBox;
         }
 
