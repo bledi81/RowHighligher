@@ -5,12 +5,14 @@ using System.Runtime.InteropServices;
 using Excel = Microsoft.Office.Interop.Excel;
 using System.Data;
 using System.Text;
+using System.Collections.Generic; // Added for Stack
 
 namespace RowHighligher
 {
     public partial class ScientificCalculator : Form
     {
-        private TextBox displayTextBox;
+        private RichTextBox expressionDisplayTextBox; // Changed from TextBox to RichTextBox
+        private TextBox resultDisplayTextBox;   // New TextBox for the result
         private Button insertButton;
         private Button clearButton;
         private Button helpButton;  // Add help button field
@@ -49,7 +51,7 @@ namespace RowHighligher
             // Set form properties
             this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
             this.Text = "Scientific Calculator";
-            this.MinimumSize = new Size(350, 550);  // Increased minimum size
+            this.MinimumSize = new Size(350, 600);  // Increased minimum width & height
             this.Size = new Size(350, 600);         // Set larger default size
             this.MaximizeBox = false;
             this.MinimizeBox = true;
@@ -60,14 +62,22 @@ namespace RowHighligher
             // Add keyboard event handlers
             this.KeyDown += ScientificCalculator_KeyDown;
             this.KeyPress += ScientificCalculator_KeyPress;
-            this.displayTextBox.GotFocus += DisplayTextBox_GotFocus;
-            this.displayTextBox.LostFocus += DisplayTextBox_LostFocus;
+            
+            // Update event handlers to point to the new expressionDisplayTextBox
+            this.expressionDisplayTextBox.GotFocus += DisplayTextBox_GotFocus;
+            this.expressionDisplayTextBox.LostFocus += DisplayTextBox_LostFocus;
+            this.expressionDisplayTextBox.TextChanged += ExpressionDisplayTextBox_TextChanged; // Add TextChanged event
+        }
+
+        private void ExpressionDisplayTextBox_TextChanged(object sender, EventArgs e)
+        {
+            HighlightParentheses();
         }
 
         // Add this to enhance the display's readability when showing expressions
         private void FormatDisplayText()
         {
-            string text = displayTextBox.Text;
+            string text = expressionDisplayTextBox.Text;
             
             // Apply operator formatting regardless of mode
             text = text.Replace("*", " × ")
@@ -86,7 +96,7 @@ namespace RowHighligher
                 text = text.Replace("  ", " ");
             }
             
-            displayTextBox.Text = text.Trim();
+            expressionDisplayTextBox.Text = text.Trim();
             
             // Always move cursor to end after formatting
             SetCursorToEnd();
@@ -98,38 +108,58 @@ namespace RowHighligher
             TableLayoutPanel mainPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                RowCount = 6,         // Reduced to 6 rows
+                RowCount = 7,         // Increased to 7 rows to accommodate separate result display
                 ColumnCount = 1,
                 Padding = new Padding(10)
             };
 
             // Update row styles for better proportions
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Display
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Buttons panel
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Parentheses panel
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 21));  // Scientific panel (increased)
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30));  // Number panel
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 10));  // Bottom panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 20));  // Expression Display (increased height)
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 8));  // Result Display
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9));  // Buttons panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 9));  // Parentheses panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 21));  // Scientific panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 26));  // Number panel (decreased slightly)
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 7));   // Bottom panel (decreased slightly)
 
-            // Display textbox
-            displayTextBox = new TextBox
+            // Expression display textbox
+            expressionDisplayTextBox = new RichTextBox // Changed from TextBox
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true, // Keep ReadOnly for now, input via buttons/KeyPress
+                Font = new Font("Consolas", 12, FontStyle.Regular),
+                // TextAlign = HorizontalAlignment.Left, // Not applicable to RichTextBox directly
+                Multiline = true,
+                WordWrap = true, // WordWrap is true by default for RichTextBox if Multiline is true
+                ScrollBars = RichTextBoxScrollBars.Vertical, // RichTextBox uses different enum
+                Text = "",
+                BackColor = Color.LightBlue // Set background color
+            };
+
+            mainPanel.Controls.Add(expressionDisplayTextBox, 0, 0);
+
+            // Result display textbox
+            resultDisplayTextBox = new TextBox
             {
                 Dock = DockStyle.Fill,
                 ReadOnly = true,
-                Font = new Font("Consolas", 20, FontStyle.Bold),
+                Font = new Font("Consolas", 18, FontStyle.Bold), // Larger font for result
                 TextAlign = HorizontalAlignment.Right,
-                Text = "0"
+                Text = "0", // Initial result display
+                BackColor = Color.LightGreen // Set background color
             };
+            mainPanel.Controls.Add(resultDisplayTextBox, 0, 1);
+
 
             // Add panel for display and decimal places control
-            Panel displayPanel = new Panel
-            {
+            Panel displayPanel = new Panel // This panel seems redundant now, can be removed or re-evaluated.
+            {                           // For now, let's assume it's not used as mainPanel directly holds textboxes.
                 Dock = DockStyle.Fill,
                 Padding = new Padding(0)
             };
-            displayPanel.Controls.Add(displayTextBox);
+            // displayPanel.Controls.Add(expressionDisplayTextBox); // This was the old setup
 
-            mainPanel.Controls.Add(displayPanel, 0, 0);
+            // mainPanel.Controls.Add(displayPanel, 0, 0); // This was the old setup
 
             // Insert button in a panel with Clear and decimal places
             TableLayoutPanel buttonsPanel = new TableLayoutPanel
@@ -138,6 +168,7 @@ namespace RowHighligher
                 ColumnCount = 5,  // Increase column count to add logo
                 RowCount = 1
             };
+            buttonsPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f)); // Ensures the single row uses all available height
             for (int i = 0; i < 6; i++) // Update column count
             {
                 buttonsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, i == 4 ? 28 : 18)); // Logo column bigger
@@ -148,7 +179,7 @@ namespace RowHighligher
             {
                 Text = "Help (F1)",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8f, FontStyle.Regular),
                 Margin = new Padding(1)
             };
             helpButton.Click += HelpButton_Click;
@@ -156,9 +187,9 @@ namespace RowHighligher
 
             insertButton = new Button
             {
-                Text = "Insert (Ctrl+Enter)",
+                Text = "Insert Ctrl+\u23CE",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8f, FontStyle.Regular),
                 Margin = new Padding(1)
             };
             insertButton.Click += InsertButton_Click;
@@ -168,7 +199,7 @@ namespace RowHighligher
             {
                 Text = "LastAns",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8f, FontStyle.Regular),
                 Margin = new Padding(1)
             };
             clearButton.Click += LastAnsButton_Click;
@@ -191,13 +222,14 @@ namespace RowHighligher
             {
                 Text = "Settings",
                 Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 8.25f, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8f, FontStyle.Regular),
                 Margin = new Padding(1)
             };
             settingsButton.Click += SettingsButton_Click;
             buttonsPanel.Controls.Add(settingsButton, 3, 0);
 
-            mainPanel.Controls.Add(buttonsPanel, 0, 1);
+            // Adjust the row index for subsequent panels due to the new resultDisplayTextBox
+            mainPanel.Controls.Add(buttonsPanel, 0, 2); // Moved from 0,1 to 0,2
 
             // Parentheses panel
             TableLayoutPanel parenthesesPanel = new TableLayoutPanel
@@ -245,10 +277,7 @@ namespace RowHighligher
             parenthesesPanel.Controls.Add(clearEntryButton, 3, 0);
 
             // Add the parentheses panel to the main panel
-            mainPanel.Controls.Add(parenthesesPanel, 0, 2);
-
-            // Adjust the row index for subsequent panels
-            //mainPanel.Controls.Add(scientificPanel, 0, 3);
+            mainPanel.Controls.Add(parenthesesPanel, 0, 3); // Moved from 0,2 to 0,3
 
             // Create a panel to hold the scientific panel and provide the border
             Panel scientificBorderPanel = new Panel
@@ -320,7 +349,7 @@ namespace RowHighligher
             }
 
             scientificBorderPanel.Controls.Add(scientificPanel);
-            mainPanel.Controls.Add(scientificBorderPanel, 0, 3);  // Add to row 3
+            mainPanel.Controls.Add(scientificBorderPanel, 0, 4);  // Moved from 0,3 to 0,4
 
             // Number buttons panel for rows 3, 4, 5
             TableLayoutPanel numberPanel = new TableLayoutPanel
@@ -373,7 +402,7 @@ namespace RowHighligher
                 numberPanel.Controls.Add(numberButtons[i], col, 1);
             }
 
-            operatorButtons[0] = new Button { Text = "/", Dock = DockStyle.Fill, Tag = "/" };
+            operatorButtons[0] = new Button { Text = "/", Dock = DockStyle.Fill, Tag = "/", BackColor = Color.LightGoldenrodYellow };
             operatorButtons[0].Click += OperatorButton_Click;
             numberPanel.Controls.Add(operatorButtons[0], 3, 1);
 
@@ -391,7 +420,7 @@ namespace RowHighligher
                 numberPanel.Controls.Add(numberButtons[i], col, 2);
             }
 
-            operatorButtons[1] = new Button { Text = "*", Dock = DockStyle.Fill, Tag = "*" };
+            operatorButtons[1] = new Button { Text = "*", Dock = DockStyle.Fill, Tag = "*", BackColor = Color.LightGoldenrodYellow };
             operatorButtons[1].Click += OperatorButton_Click;
             numberPanel.Controls.Add(operatorButtons[1], 3, 2);
 
@@ -409,13 +438,13 @@ namespace RowHighligher
                 numberPanel.Controls.Add(numberButtons[i], col, 3);
             }
 
-            operatorButtons[2] = new Button { Text = "-", Dock = DockStyle.Fill, Tag = "-" };
+            operatorButtons[2] = new Button { Text = "-", Dock = DockStyle.Fill, Tag = "-", BackColor = Color.LightGoldenrodYellow };
             operatorButtons[2].Click += OperatorButton_Click;
             numberPanel.Controls.Add(operatorButtons[2], 3, 3);
 
-            mainPanel.Controls.Add(numberPanel, 0, 4);  // Add to row 4 (moved down)
+            mainPanel.Controls.Add(numberPanel, 0, 5);  // Moved from 0,4 to 0,5
 
-            // Bottom panel for 0, ., +/-, =, +
+            // Bottom panel for 0, ., +/-, =
             TableLayoutPanel bottomPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -435,17 +464,82 @@ namespace RowHighligher
             operatorButtons[3].Click += DecimalPoint_Click;
             bottomPanel.Controls.Add(operatorButtons[3], 1, 0);
 
-            operatorButtons[4] = new Button { Text = "=", Dock = DockStyle.Fill, Tag = "=" };
+            operatorButtons[4] = new Button { Text = "=", Dock = DockStyle.Fill, Tag = "=", BackColor = Color.Orange };
             operatorButtons[4].Click += EqualsButton_Click;
             bottomPanel.Controls.Add(operatorButtons[4], 2, 0);
 
-            operatorButtons[5] = new Button { Text = "+", Dock = DockStyle.Fill, Tag = "+" };
+            operatorButtons[5] = new Button { Text = "+", Dock = DockStyle.Fill, Tag = "+", BackColor = Color.LightGoldenrodYellow };
             operatorButtons[5].Click += OperatorButton_Click;
             bottomPanel.Controls.Add(operatorButtons[5], 3, 0);
 
-            mainPanel.Controls.Add(bottomPanel, 0, 5);
+            mainPanel.Controls.Add(bottomPanel, 0, 6); // Moved from 0,5 to 0,6
 
             this.Controls.Add(mainPanel);
+        }
+
+        private void HighlightParentheses()
+        {
+            if (expressionDisplayTextBox.Text.Length == 0)
+                return;
+
+            // Save current selection
+            int selectionStart = expressionDisplayTextBox.SelectionStart;
+            int selectionLength = expressionDisplayTextBox.SelectionLength;
+
+            // Reset all text to default color (e.g., black)
+            expressionDisplayTextBox.SelectAll();
+            expressionDisplayTextBox.SelectionColor = Color.Black; // Or your default text color
+            expressionDisplayTextBox.DeselectAll();
+
+            Stack<int> openParenthesesIndices = new Stack<int>();
+            // Define a few colors for matching pairs - can be extended
+            Color[] pairColors = { Color.Blue, Color.Green, Color.Purple, Color.OrangeRed }; 
+            int colorIndex = 0;
+
+            for (int i = 0; i < expressionDisplayTextBox.Text.Length; i++)
+            {
+                char c = expressionDisplayTextBox.Text[i];
+                if (c == '(')
+                {
+                    openParenthesesIndices.Push(i);
+                }
+                else if (c == ')')
+                {
+                    if (openParenthesesIndices.Count > 0)
+                    {
+                        int openIndex = openParenthesesIndices.Pop();
+                        Color currentColor = pairColors[colorIndex % pairColors.Length];
+                        colorIndex++;
+
+                        // Highlight opening parenthesis
+                        expressionDisplayTextBox.Select(openIndex, 1);
+                        expressionDisplayTextBox.SelectionColor = currentColor;
+
+                        // Highlight closing parenthesis
+                        expressionDisplayTextBox.Select(i, 1);
+                        expressionDisplayTextBox.SelectionColor = currentColor;
+                    }
+                    else
+                    {
+                        // Unmatched closing parenthesis - color it red
+                        expressionDisplayTextBox.Select(i, 1);
+                        expressionDisplayTextBox.SelectionColor = Color.Red;
+                    }
+                }
+            }
+
+            // Any remaining open parentheses are unmatched - color them red
+            while (openParenthesesIndices.Count > 0)
+            {
+                int unmatchedOpenIndex = openParenthesesIndices.Pop();
+                expressionDisplayTextBox.Select(unmatchedOpenIndex, 1);
+                expressionDisplayTextBox.SelectionColor = Color.Red;
+            }
+
+            // Restore original selection
+            expressionDisplayTextBox.Select(selectionStart, selectionLength);
+            // Ensure focus remains if it was there
+            if(this.ActiveControl == expressionDisplayTextBox) expressionDisplayTextBox.Focus();
         }
 
         // Add a field to track bracket balance
@@ -500,13 +594,13 @@ namespace RowHighligher
                 keyBuffer += e.KeyChar;
                 
                 // Display what the user is typing in real-time
-                if (isNewCalculation || displayTextBox.Text == "0")
+                if (isNewCalculation || expressionDisplayTextBox.Text == "0" || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // Check for empty too
                 {
-                    displayTextBox.Text = keyBuffer;
+                    expressionDisplayTextBox.Text = keyBuffer;
                 }
                 else
                 {
-                    displayTextBox.Text += e.KeyChar; // Add just the current character
+                    expressionDisplayTextBox.Text += e.KeyChar; // Add just the current character
                 }
                 
                 // Check if we've completed a function name
@@ -556,8 +650,8 @@ namespace RowHighligher
                     else if (keyBuffer.EndsWith("pi", StringComparison.OrdinalIgnoreCase))
                     {
                         // Special handling for pi
-                        string currentTextInner = displayTextBox.Text; // Renamed to 'currentTextInner'
-                        displayTextBox.Text = currentTextInner.Substring(0, currentTextInner.Length - 2) + "π";
+                        string currentTextInner = expressionDisplayTextBox.Text; // Renamed to 'currentTextInner'
+                        expressionDisplayTextBox.Text = currentTextInner.Substring(0, currentTextInner.Length - 2) + "π";
                         keyBuffer = "";
                         isNewCalculation = false;
                         SetCursorToEnd();
@@ -567,8 +661,8 @@ namespace RowHighligher
                     else if (keyBuffer.Equals("e", StringComparison.OrdinalIgnoreCase))
                     {
                         // Special handling for e
-                        string currentTextInner = displayTextBox.Text; // Renamed to 'currentTextInner'
-                        displayTextBox.Text = currentTextInner.Substring(0, currentTextInner.Length - 1) + "e";
+                        string currentTextInner = expressionDisplayTextBox.Text; // Renamed to 'currentTextInner'
+                        expressionDisplayTextBox.Text = currentTextInner.Substring(0, currentTextInner.Length - 1) + "e";
                         keyBuffer = "";
                         isNewCalculation = false;
                         SetCursorToEnd();
@@ -577,8 +671,8 @@ namespace RowHighligher
                     }
                     
                     // Remove the function characters and add the function with parenthesis
-                    string currentTextOuter = displayTextBox.Text;
-                    displayTextBox.Text = currentTextOuter.Substring(0, currentTextOuter.Length - charsToCut) + 
+                    string currentTextOuter = expressionDisplayTextBox.Text;
+                    expressionDisplayTextBox.Text = currentTextOuter.Substring(0, currentTextOuter.Length - charsToCut) + 
                                           functionName + "(";
                     
                     // Reset buffer since we've processed this function
@@ -628,19 +722,20 @@ namespace RowHighligher
 
             else if (e.KeyChar == '\b') // Handle backspace
             {
-                if (displayTextBox.Text.Length > 0)
+                if (expressionDisplayTextBox.Text.Length > 0)
                 {
                     // Check if we're deleting a parenthesis
-                    char lastChar = displayTextBox.Text[displayTextBox.Text.Length - 1];
+                    char lastChar = expressionDisplayTextBox.Text[expressionDisplayTextBox.Text.Length - 1];
                     if (lastChar == '(')
                         bracketCount--;
                     else if (lastChar == ')')
                         bracketCount++;
 
-                    displayTextBox.Text = displayTextBox.Text.Substring(0, displayTextBox.Text.Length - 1);
-                    if (displayTextBox.Text.Length == 0)
+                    expressionDisplayTextBox.Text = expressionDisplayTextBox.Text.Substring(0, expressionDisplayTextBox.Text.Length - 1);
+                    if (expressionDisplayTextBox.Text.Length == 0)
                     {
-                        displayTextBox.Text = "0"; // Reset to 0 if empty
+                        // expressionDisplayTextBox.Text = "0"; // Reset to 0 if empty - better to leave it empty for expression
+                        resultDisplayTextBox.Text = "0"; // Reset result display
                     }
                     FormatDisplayText(); // Call to format the display text for better readability
                 }
@@ -675,7 +770,7 @@ namespace RowHighligher
             else if (e.KeyChar == '^')
             {
                 // Add the power operator
-                displayTextBox.Text += "^";
+                expressionDisplayTextBox.Text += "^";
                 isExpressionMode = true; // Treat power operations as expressions
                 isNewCalculation = false;
                 SetCursorToEnd();
@@ -686,13 +781,13 @@ namespace RowHighligher
         private void DisplayTextBox_GotFocus(object sender, EventArgs e)
         {
             isInKeyboardMode = true;
-            displayTextBox.BackColor = Color.LightSkyBlue;
+            // expressionDisplayTextBox.BackColor = Color.LightSkyBlue; // Keep LightGreen or choose another focus color
         }
 
         private void DisplayTextBox_LostFocus(object sender, EventArgs e)
         {
             isInKeyboardMode = false;
-            displayTextBox.BackColor = SystemColors.Window;
+            // expressionDisplayTextBox.BackColor = SystemColors.Window; // Keep LightGreen
         }
 
         private void NumberButton_Click(object sender, EventArgs e)
@@ -705,76 +800,78 @@ namespace RowHighligher
         {
             if (isNewCalculation)
             {
+                expressionDisplayTextBox.Text = ""; // Clear expression display for new calculation
+                resultDisplayTextBox.Text = "0";    // Reset result display
                 // For starting a new calculation
-                if (value == "sqrt" || value == "sin" || value == "cos")
+                if (value == "sqrt" || value == "sin" || value == "cos" || value == "tan" || value == "log" || value == "ln")
                 {
                     // For functions, show the function name followed by opening parenthesis
-                    displayTextBox.Text = value + "(";
+                    expressionDisplayTextBox.Text = value + "(";
                     isExpressionMode = true;
                     bracketCount++; // Important: increment bracket count when adding function parenthesis
                 }
                 else if (value == "(")
                 {
                     // For opening parenthesis
-                    displayTextBox.Text = value;
+                    expressionDisplayTextBox.Text = value;
                     bracketCount++;
                     isExpressionMode = true; // Important: set expression mode when opening parenthesis
                 }
                 else if (value == "-")
                 {
                     // For negative number
-                    displayTextBox.Text = value;
+                    expressionDisplayTextBox.Text = value;
                 }
                 else if (char.IsDigit(value[0]) || value == ".")
                 {
                     // For digits or decimal point
-                    displayTextBox.Text = value;
+                    expressionDisplayTextBox.Text = value;
                 }
                 else
                 {
-                    // For operators, start with 0 then operator
-                    displayTextBox.Text = "0" + value;
+                    // For operators, start with 0 then operator (or previous answer)
+                    // expressionDisplayTextBox.Text = "0" + value; // Old behavior
+                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text + value; // Use previous result
                 }
                 isNewCalculation = false;
             }
             else
             {
                 // For continuing an expression
-                if (value == "sqrt" || value == "sin" || value == "cos")
+                if (value == "sqrt" || value == "sin" || value == "cos" || value == "tan" || value == "log" || value == "ln")
                 {
-                    displayTextBox.Text += value + "(";
+                    expressionDisplayTextBox.Text += value + "(";
                     isExpressionMode = true;
                     bracketCount++; // Important: increment bracket count when adding function parenthesis
                 }
                 else if (value == "(")
                 {
-                    displayTextBox.Text += value;
+                    expressionDisplayTextBox.Text += value;
                     bracketCount++;
                     isExpressionMode = true; // Important: set expression mode when opening parenthesis
                 }
-                else if (displayTextBox.Text == "0" && value != ".")
+                else if (string.IsNullOrEmpty(expressionDisplayTextBox.Text) && value != ".") // Was displayTextBox.Text == "0"
                 {
-                    displayTextBox.Text = value;
+                    expressionDisplayTextBox.Text = value;
                 }
                 else
                 {
-                    displayTextBox.Text += value;
+                    expressionDisplayTextBox.Text += value;
                 }
             }
 
             // After appending the value, always check if we should be in expression mode
             // If there are any open brackets, we should be in expression mode
             isExpressionMode = bracketCount > 0 ||
-                              displayTextBox.Text.Contains("(") && !HasBalancedParentheses(displayTextBox.Text);
+                              expressionDisplayTextBox.Text.Contains("(") && !HasBalancedParentheses(expressionDisplayTextBox.Text);
 
 
             // Only format the display once, and only when appropriate
-            if (!isExpressionMode)
-            {
-                FormatDisplayText();
-            }
-
-            // Always set cursor to the end
+            // if (!isExpressionMode) // Formatting logic might need adjustment with RichTextBox
+            // {
+            //     // FormatDisplayText(); 
+            // }
+            // HighlightParentheses(); // Called by TextChanged event
             SetCursorToEnd();
         }
 
@@ -787,13 +884,13 @@ namespace RowHighligher
         {
             if (isNewCalculation)
             {
-                displayTextBox.Text = "0.";
+                expressionDisplayTextBox.Text = "0.";
                 isNewCalculation = false;
             }
             else
             {
                 // Check if we need to handle multiple terms
-                string currentText = displayTextBox.Text;
+                string currentText = expressionDisplayTextBox.Text;
                 
                 // Find operators to identify terms
                 char[] operators = new[] { '+', '-', '*', '/', '×', '÷', '^' };
@@ -818,21 +915,21 @@ namespace RowHighligher
                     {
                         // If the term is empty, add "0."
                         if (string.IsNullOrWhiteSpace(currentTerm))
-                            displayTextBox.Text += "0.";
+                            expressionDisplayTextBox.Text += "0.";
                         else
-                            displayTextBox.Text += ".";
+                            expressionDisplayTextBox.Text += ".";
                     }
                 }
                 else
                 {
                     // Working with just the first term
                     if (!currentText.Contains("."))
-                        displayTextBox.Text += ".";
+                        expressionDisplayTextBox.Text += ".";
                 }
             }
             
             // Format and set cursor position
-            FormatDisplayText(); 
+            // FormatDisplayText(); // Consider when to call this
             SetCursorToEnd();
         }
 
@@ -845,23 +942,23 @@ namespace RowHighligher
         private void HandleOperation(string operation)
         {
             // Always allow operators after a result or in expression mode
-            if (operation == "-" && (isNewCalculation || displayTextBox.Text == "0"))
+            if (operation == "-" && (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text))) // was displayTextBox.Text == "0"
             {
                 // Special case for negative numbers at start
-                displayTextBox.Text = operation;
+                expressionDisplayTextBox.Text = operation;
                 isNewCalculation = false;
             }
             else if (isNewCalculation)
             {
-                // If starting fresh with non-negative operator, prepend 0
-                displayTextBox.Text = "0 " + operation + " ";
+                // If starting fresh with non-negative operator, prepend last answer or 0
+                expressionDisplayTextBox.Text = resultDisplayTextBox.Text + " " + operation + " ";
                 lastOperation = operation;
                 isNewCalculation = false;
             }
             else
             {
                 // For continuing an expression or after result
-                displayTextBox.Text += " " + operation + " ";
+                expressionDisplayTextBox.Text += " " + operation + " ";
                 lastOperation = operation;
                 isNewCalculation = false;
             }
@@ -879,18 +976,18 @@ namespace RowHighligher
         {
             try
             {
-                if (isNewCalculation || displayTextBox.Text == "0")
+                if (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // was displayTextBox.Text == "0"
                 {
                     return; // No calculation needed
                 }
 
-                if (!HasBalancedParentheses(displayTextBox.Text))
+                if (!HasBalancedParentheses(expressionDisplayTextBox.Text))
                 {
-                    if (displayTextBox.Text.Contains("(") || displayTextBox.Text.Contains(")"))
+                    if (expressionDisplayTextBox.Text.Contains("(") || expressionDisplayTextBox.Text.Contains(")"))
                     {
                         MessageBox.Show("Expression has unbalanced parentheses. Please close all open brackets.",
                             "Syntax Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        bracketCount = CountOpenParentheses(displayTextBox.Text);
+                        bracketCount = CountOpenParentheses(expressionDisplayTextBox.Text);
                         return;
                     }
                 }
@@ -898,13 +995,16 @@ namespace RowHighligher
                 isExpressionMode = false;
                 bracketCount = 0;
 
-                double result = ExpressionEvaluator.Evaluate(displayTextBox.Text, decimalPlaces);
+                double result = ExpressionEvaluator.Evaluate(expressionDisplayTextBox.Text, decimalPlaces);
                 lastAnswer = result;
-                displayTextBox.Text = result.ToString($"F{decimalPlaces}");
+                resultDisplayTextBox.Text = result.ToString($"F{decimalPlaces}"); // Update result display
+                // expressionDisplayTextBox.Text = result.ToString($"F{decimalPlaces}"); // Old: expression display showed result
 
                 lastOperation = "";
-                isNewCalculation = true;
-                SetCursorToEnd();
+                isNewCalculation = true; // Ready for new calculation, expression can stay for reference
+                                         // Or clear expressionDisplayTextBox here if preferred:
+                                         // expressionDisplayTextBox.Text = ""; 
+                SetCursorToEnd(); // Focus on expressionDisplayTextBox
             }
             catch (Exception ex)
             {
@@ -914,7 +1014,8 @@ namespace RowHighligher
 
         private void ShowError(string message)
         {
-            displayTextBox.Text = "Error";
+            resultDisplayTextBox.Text = "Error"; // Show error in result display
+            expressionDisplayTextBox.Text = ""; // Clear expression display
             isNewCalculation = true;
             isExpressionMode = false;
             MessageBox.Show(message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -958,7 +1059,7 @@ namespace RowHighligher
                 int exponentEndIndex = powerIndex + 1;
                 while (exponentEndIndex < expression.Length && 
                       (char.IsDigit(expression[exponentEndIndex]) || 
-                       expression[exponentEndIndex] == '.' ||
+                       expression[exponentEndIndex] == '.' || 
                        expression[exponentEndIndex] == '('))
                 {
                     exponentEndIndex++;
@@ -1258,13 +1359,13 @@ namespace RowHighligher
             // Handle constants
             if (operation == "π")
             {
-                if (isNewCalculation || displayTextBox.Text == "0")
+                if (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // was displayTextBox.Text == "0"
                 {
-                    displayTextBox.Text = "π";  // Changed from PI.ToString() to "π"
+                    expressionDisplayTextBox.Text = "π";  // Changed from PI.ToString() to "π"
                 }
                 else
                 {
-                    displayTextBox.Text += "π";  // Changed from PI.ToString() to "π"
+                    expressionDisplayTextBox.Text += "π";  // Changed from PI.ToString() to "π"
                 }
                 isNewCalculation = false;
                 SetCursorToEnd();
@@ -1272,13 +1373,13 @@ namespace RowHighligher
             }
             else if (operation == "e")
             {
-                if (isNewCalculation || displayTextBox.Text == "0")
+                if (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // was displayTextBox.Text == "0"
                 {
-                    displayTextBox.Text = "e";  // Changed from E.ToString() to "e"
+                    expressionDisplayTextBox.Text = "e";  // Changed from E.ToString() to "e"
                 }
                 else
                 {
-                    displayTextBox.Text += "e";  // Changed from E.ToString() to "e"
+                    expressionDisplayTextBox.Text += "e";  // Changed from E.ToString() to "e"
                 }
                 isNewCalculation = false;
                 SetCursorToEnd();
@@ -1287,7 +1388,7 @@ namespace RowHighligher
             else if (operation == "deg_to_rad" || operation == "rad_to_deg")
             {
                 double value;
-                if (double.TryParse(displayTextBox.Text, out value))
+                if (double.TryParse(resultDisplayTextBox.Text, out value)) // Use resultDisplayTextBox for conversion input
                 {
                     if (operation == "deg_to_rad")
                     {
@@ -1297,7 +1398,8 @@ namespace RowHighligher
                     {
                         value *= RAD_TO_DEG;
                     }
-                    displayTextBox.Text = value.ToString();
+                    resultDisplayTextBox.Text = value.ToString(); // Update result display
+                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text; // Optionally copy to expression
                     isNewCalculation = true;
                 }
                 return;
@@ -1308,13 +1410,13 @@ namespace RowHighligher
                 operation == "tan" || operation == "log" || operation == "ln")
             {
                 // Start or continue an expression with this function
-                if (isNewCalculation || displayTextBox.Text == "0")
+                if (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // was displayTextBox.Text == "0"
                 {
-                    displayTextBox.Text = operation + "(";
+                    expressionDisplayTextBox.Text = operation + "(";
                 }
                 else
                 {
-                    displayTextBox.Text += operation + "(";
+                    expressionDisplayTextBox.Text += operation + "(";
                 }
 
                 isExpressionMode = true;
@@ -1327,14 +1429,15 @@ namespace RowHighligher
             // Special handling for power function
             else if (operation == "x^y")
             {
-                if (isNewCalculation || displayTextBox.Text == "0")
+                if (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // was displayTextBox.Text == "0"
                 {
-                    // Can't start with power operator
-                    return;
+                    // Can't start with power operator if expression is empty
+                    // Prepend with last answer or 0
+                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text + "^";
+                } else {
+                     expressionDisplayTextBox.Text += "^";
                 }
                 
-                // Add the power operator
-                displayTextBox.Text += "^";
                 isExpressionMode = true; // Treat power operations as expressions
                 isNewCalculation = false;
                 SetCursorToEnd();
@@ -1349,9 +1452,9 @@ namespace RowHighligher
             }
             else
             {
-                // Try traditional calculation if possible
+                // Try traditional calculation if possible, using the result display
                 double value;
-                if (double.TryParse(displayTextBox.Text, out value))
+                if (double.TryParse(resultDisplayTextBox.Text, out value)) // Use result display for M+
                 {
                     double result = 0;
                     bool calculated = false;
@@ -1374,7 +1477,8 @@ namespace RowHighligher
 
                     if (calculated)
                     {
-                        displayTextBox.Text = result.ToString();
+                        resultDisplayTextBox.Text = result.ToString(); // Update result display
+                        expressionDisplayTextBox.Text = resultDisplayTextBox.Text; // Optionally copy to expression
                         isNewCalculation = true;
                     }
                     else
@@ -1403,29 +1507,37 @@ namespace RowHighligher
                     memory = 0;
                     break;
                 case "MR":
-                    displayTextBox.Text = memory.ToString();
-                    isNewCalculation = true;
+                    // When recalling memory, it should go into the expression display
+                    // and also update the result display if it's a new calculation.
+                    if (isNewCalculation) {
+                        expressionDisplayTextBox.Text = memory.ToString();
+                        resultDisplayTextBox.Text = memory.ToString();
+                    } else {
+                        expressionDisplayTextBox.Text += memory.ToString();
+                    }
+                    isNewCalculation = false; // Continue expression
                     break;
                 case "M+":
-                    if (double.TryParse(displayTextBox.Text, out value))
+                    if (double.TryParse(resultDisplayTextBox.Text, out value)) // Use result display for M+
                     {
                         memory += value;
                     }
-                    isNewCalculation = true;
+                    isNewCalculation = true; // M+ usually finalizes current number
                     break;
                 case "M-":
-                    if (double.TryParse(displayTextBox.Text, out value))
+                    if (double.TryParse(resultDisplayTextBox.Text, out value)) // Use result display for M-
                     {
                         memory -= value;
                     }
-                    isNewCalculation = true;
+                    isNewCalculation = true; // M- usually finalizes current number
                     break;
             }
         }
 
         private void ClearButton_Click(object sender, EventArgs e)
         {
-            displayTextBox.Text = "0";
+            expressionDisplayTextBox.Text = ""; // Clear expression
+            resultDisplayTextBox.Text = "0";    // Reset result to 0
             lastValue = 0;
             lastOperation = "";
             isNewCalculation = true;
@@ -1445,7 +1557,7 @@ namespace RowHighligher
                     if (activeCell != null)
                     {
                         double value;
-                        if (double.TryParse(displayTextBox.Text, out value))
+                        if (double.TryParse(resultDisplayTextBox.Text, out value)) // Insert from result display
                         {
                             activeCell.Value = value;
                             Marshal.ReleaseComObject(activeCell);
@@ -1465,8 +1577,9 @@ namespace RowHighligher
 
         private void SetCursorToEnd()
         {
-            displayTextBox.SelectionStart = displayTextBox.Text.Length;
-            displayTextBox.SelectionLength = 0;
+            expressionDisplayTextBox.Focus(); // Ensure focus is on the expression box
+            expressionDisplayTextBox.SelectionStart = expressionDisplayTextBox.Text.Length;
+            expressionDisplayTextBox.SelectionLength = 0;
         }
 
         private void TestNestedExpression(string expression)
@@ -1475,7 +1588,7 @@ namespace RowHighligher
             ClearButton_Click(this, EventArgs.Empty);
             
             // Set the display text manually for testing
-            displayTextBox.Text = expression;
+            expressionDisplayTextBox.Text = expression;
             isNewCalculation = false;
             isExpressionMode = true;
             
@@ -1494,30 +1607,31 @@ namespace RowHighligher
         private void BackspaceButton_Click(object sender, EventArgs e)
         {
             // Reuse the same logic that's used for keyboard backspace
-            if (displayTextBox.Text.Length > 0)
+            if (expressionDisplayTextBox.Text.Length > 0)
             {
                 // Check if we're deleting a parenthesis
-                char lastChar = displayTextBox.Text[displayTextBox.Text.Length - 1];
+                char lastChar = expressionDisplayTextBox.Text[expressionDisplayTextBox.Text.Length - 1];
                 if (lastChar == '(')
                     bracketCount--;
                 else if (lastChar == ')')
                     bracketCount++;
 
-                displayTextBox.Text = displayTextBox.Text.Substring(0, displayTextBox.Text.Length - 1);
-                if (displayTextBox.Text.Length == 0)
+                expressionDisplayTextBox.Text = expressionDisplayTextBox.Text.Substring(0, expressionDisplayTextBox.Text.Length - 1);
+                if (expressionDisplayTextBox.Text.Length == 0)
                 {
-                    displayTextBox.Text = "0"; // Reset to 0 if empty
+                    // expressionDisplayTextBox.Text = "0"; // Reset to 0 if empty - leave empty
+                    resultDisplayTextBox.Text = "0"; // Reset result display
                     isNewCalculation = true;
                 }
                 
                 // After backspace, recalculate if we should be in expression mode
                 isExpressionMode = bracketCount > 0 ||
-                                  displayTextBox.Text.Contains("(") && !HasBalancedParentheses(displayTextBox.Text);
+                                  expressionDisplayTextBox.Text.Contains("(") && !HasBalancedParentheses(expressionDisplayTextBox.Text);
                 
                 // Only format if not in expression mode
                 if (!isExpressionMode)
                 {
-                    FormatDisplayText();
+                    // FormatDisplayText(); // Consider when to call
                 }
                 
                 SetCursorToEnd();
@@ -1526,7 +1640,8 @@ namespace RowHighligher
 
         private void ClearEntryButton_Click(object sender, EventArgs e)
         {
-            displayTextBox.Text = "0";
+            expressionDisplayTextBox.Text = ""; // Clear expression
+            resultDisplayTextBox.Text = "0";    // Reset result to 0
             lastValue = 0; // Reset lastValue when clearing entry
             lastOperation = "";
             isNewCalculation = true;
@@ -1539,21 +1654,21 @@ namespace RowHighligher
         private void LastAnsButton_Click(object sender, EventArgs e)
         {
             // Insert the last answer into the current expression
-            if (isNewCalculation || displayTextBox.Text == "0")
+            if (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // was displayTextBox.Text == "0"
             {
                 // If starting a new calculation, replace with last answer
-                displayTextBox.Text = lastAnswer.ToString();
+                expressionDisplayTextBox.Text = lastAnswer.ToString();
                 isNewCalculation = false;
             }
             else
             {
                 // Otherwise append to the current expression
-                displayTextBox.Text += lastAnswer.ToString();
+                expressionDisplayTextBox.Text += lastAnswer.ToString();
             }
             
             // After appending, check if expression mode should be active
             isExpressionMode = bracketCount > 0 || 
-                              (displayTextBox.Text.Contains("(") && !HasBalancedParentheses(displayTextBox.Text));
+                              (expressionDisplayTextBox.Text.Contains("(") && !HasBalancedParentheses(expressionDisplayTextBox.Text));
             SetCursorToEnd();
         }
 
@@ -1611,10 +1726,10 @@ namespace RowHighligher
                     Properties.Settings.Default.CalculatorDecimalPlaces = this.decimalPlaces;
                     Properties.Settings.Default.Save();
                     
-                    // If there's a number currently displayed, reformat it with the new decimal places
-                    if (double.TryParse(displayTextBox.Text, out double currentValue))
+                    // If there's a number currently displayed in the result, reformat it
+                    if (double.TryParse(resultDisplayTextBox.Text, out double currentValue)) // Check resultDisplayTextBox
                     {
-                        displayTextBox.Text = currentValue.ToString($"F{decimalPlaces}");
+                        resultDisplayTextBox.Text = currentValue.ToString($"F{decimalPlaces}"); // Update resultDisplayTextBox
                     }
                 }
             }
