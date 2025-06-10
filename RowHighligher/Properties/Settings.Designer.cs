@@ -25,7 +25,7 @@ namespace RowHighligher.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool IsHighlighterEnabled {
             get {
                 return ((bool)(this["IsHighlighterEnabled"]));
@@ -116,18 +116,6 @@ namespace RowHighligher.Properties {
             }
             set {
                 this["CalculatorDecimalPlaces"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool IsConverterDetached {
-            get {
-                return ((bool)(this["IsConverterDetached"]));
-            }
-            set {
-                this["IsConverterDetached"] = value;
             }
         }
     }

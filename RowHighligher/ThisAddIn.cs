@@ -14,7 +14,8 @@ namespace RowHighligher
         public Ribbon1 RibbonInstance { get; private set; }
         private const string ADDIN_CF_FORMULA = "=ROW()=ROW()+N(\"RowHighlighterAddInRule_v1.1\")";
 
-        private bool wasHighlighterEnabledBeforeSave = false;        
+        private bool wasHighlighterEnabledBeforeSave = false;
+        private bool globalHighlighterState = false;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
@@ -34,6 +35,7 @@ namespace RowHighligher
             this.Application.WorkbookBeforeSave += Application_WorkbookBeforeSave;
             this.Application.WorkbookBeforeClose += Application_WorkbookBeforeClose;
             this.Application.WorkbookAfterSave += Application_WorkbookAfterSave;
+            this.Application.WorkbookOpen += Application_WorkbookOpen;
 
             Timer startupTimer = new Timer();
             startupTimer.Interval = 100;
@@ -80,6 +82,7 @@ namespace RowHighligher
                 this.Application.WorkbookBeforeSave -= Application_WorkbookBeforeSave;
                 this.Application.WorkbookBeforeClose -= Application_WorkbookBeforeClose;
                 this.Application.WorkbookAfterSave += Application_WorkbookAfterSave;
+                this.Application.WorkbookOpen -= Application_WorkbookOpen;
             }
 
             try
@@ -135,6 +138,7 @@ namespace RowHighligher
 
                 Properties.Settings.Default.IsHighlighterEnabled = value;
                 Properties.Settings.Default.Save();
+                globalHighlighterState = value; // Add this line to keep global state in sync
 
                 if (!value)
                 {
@@ -291,8 +295,19 @@ namespace RowHighligher
 
         private void Application_WorkbookBeforeClose(Excel.Workbook Wb, ref bool Cancel)
         {
-            System.Diagnostics.Debug.WriteLine("WorkbookBeforeClose: Toggling off highlighter before close.");
-            this.IsHighlighterEnabled = false;
+            System.Diagnostics.Debug.WriteLine("WorkbookBeforeClose: Removing highlighter from closing workbook.");
+            // Instead of setting the global IsHighlighterEnabled to false and saving it,
+            // just remove the formatting from the workbook being closed if the highlighter is active.
+            if (this.IsHighlighterEnabled)
+            {
+                foreach (Excel.Worksheet ws in Wb.Worksheets)
+                {
+                    RemoveAddinConditionalFormatting(ws);
+                    Marshal.ReleaseComObject(ws);
+                }
+            }
+            // Do NOT change Properties.Settings.Default.IsHighlighterEnabled here.
+            // Do NOT save settings here.
         }
 
         private void Application_WorkbookAfterSave(Excel.Workbook Wb, bool Success)
@@ -305,6 +320,45 @@ namespace RowHighligher
                 this.IsHighlighterEnabled = true;
             }
 
+        }
+
+        private void Application_WorkbookOpen(Excel.Workbook Wb)
+        {
+            System.Diagnostics.Debug.WriteLine($"WorkbookOpen: Highlighter state is {this.IsHighlighterEnabled}");
+            // The IsHighlighterEnabled state should already be loaded correctly from settings
+            // during ThisAddIn_Startup. If it's enabled, apply to the newly opened workbook.
+            if (this.IsHighlighterEnabled)
+            {
+                Excel.Worksheet activeSheet = null;
+                Excel.Range selection = null;
+                try
+                {
+                    activeSheet = Wb.ActiveSheet as Excel.Worksheet;
+                    if (activeSheet != null)
+                    {
+                        selection = this.Application.Selection as Excel.Range; // Or Wb.Application.Selection
+                        if (selection != null && selection.Worksheet.Parent.Name == Wb.Name) // Ensure selection is in the opened workbook
+                        {
+                            ApplyHighlightingToSelection(selection);
+                        }
+                        else if (selection != null)
+                        {
+                            Marshal.ReleaseComObject(selection); // Release if it's from another workbook
+                        }
+                    }
+                }
+                catch (COMException ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"WorkbookOpen ApplyHighlighting Error: {ex.Message}");
+                }
+                finally
+                {
+                    if (selection != null) Marshal.ReleaseComObject(selection);
+                    if (activeSheet != null) Marshal.ReleaseComObject(activeSheet);
+                }
+            }
+            // Ribbon should be updated in ThisAddIn_Startup or when IsHighlighterEnabled is changed.
+            // RibbonInstance?.InvalidateToggleButton(); // May not be needed here if startup handles it.
         }
 
         private void ApplyHighlightingToSelection(Excel.Range selection)
