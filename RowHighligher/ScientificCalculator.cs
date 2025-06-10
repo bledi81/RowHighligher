@@ -6,6 +6,7 @@ using Excel = Microsoft.Office.Interop.Excel;
 using System.Data;
 using System.Text;
 using System.Collections.Generic; // Added for Stack
+using System.Linq; // Added for LINQ operations
 
 namespace RowHighligher
 {
@@ -25,6 +26,7 @@ namespace RowHighligher
         private string lastOperation = "";
         private double lastValue = 0;
         private bool isInKeyboardMode = true;
+        private bool isRadiansMode = true; // Track angle mode: true = radians, false = degrees
 
         // Add a field to track when an expression is being built
         private bool isExpressionMode = false;
@@ -350,6 +352,9 @@ namespace RowHighligher
 
             scientificBorderPanel.Controls.Add(scientificPanel);
             mainPanel.Controls.Add(scientificBorderPanel, 0, 4);  // Moved from 0,3 to 0,4
+
+            // Set initial button colors for RAD/DEG mode
+            UpdateAngleModeButtonsDisplay();
 
             // Number buttons panel for rows 3, 4, 5
             TableLayoutPanel numberPanel = new TableLayoutPanel
@@ -995,7 +1000,7 @@ namespace RowHighligher
                 isExpressionMode = false;
                 bracketCount = 0;
 
-                double result = ExpressionEvaluator.Evaluate(expressionDisplayTextBox.Text, decimalPlaces);
+                double result = ExpressionEvaluator.Evaluate(expressionDisplayTextBox.Text, decimalPlaces, isRadiansMode);
                 lastAnswer = result;
                 resultDisplayTextBox.Text = result.ToString($"F{decimalPlaces}"); // Update result display
                 // expressionDisplayTextBox.Text = result.ToString($"F{decimalPlaces}"); // Old: expression display showed result
@@ -1162,6 +1167,11 @@ namespace RowHighligher
                             // Calculate sin of the inner expression
                             DataTable dt = new DataTable();
                             double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            
+                            // Apply degrees to radians conversion if needed
+                            if (!isRadiansMode)
+                                innerValue *= DEG_TO_RAD;
+                                
                             double sinValue = Math.Sin(innerValue);
                             
                             // Replace with result (in parentheses)
@@ -1198,6 +1208,11 @@ namespace RowHighligher
                             
                             DataTable dt = new DataTable();
                             double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            
+                            // Apply degrees to radians conversion if needed
+                            if (!isRadiansMode)
+                                innerValue *= DEG_TO_RAD;
+                                
                             double cosValue = Math.Cos(innerValue);
                             
                             string replacement = "(" + cosValue.ToString($"F{decimalPlaces}") + ")";
@@ -1234,6 +1249,11 @@ namespace RowHighligher
                             
                             DataTable dt = new DataTable();
                             double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            
+                            // Apply degrees to radians conversion if needed
+                            if (!isRadiansMode)
+                                innerValue *= DEG_TO_RAD;
+                                
                             double tanValue = Math.Tan(innerValue);
                             
                             string replacement = "(" + tanValue.ToString($"F{decimalPlaces}") + ")";
@@ -1385,21 +1405,36 @@ namespace RowHighligher
                 SetCursorToEnd();
                 return;
             }
-            else if (operation == "deg_to_rad" || operation == "rad_to_deg")
+            else if (operation == "deg_to_rad") // RAD button clicked
             {
+                // Toggle to Radians mode if we're not already in it
+                isRadiansMode = true;
+                UpdateAngleModeButtonsDisplay();
+
+                // If there's a value in the result field, also convert it from DEG to RAD
                 double value;
-                if (double.TryParse(resultDisplayTextBox.Text, out value)) // Use resultDisplayTextBox for conversion input
+                if (double.TryParse(resultDisplayTextBox.Text, out value))
                 {
-                    if (operation == "deg_to_rad")
-                    {
-                        value *= DEG_TO_RAD;
-                    }
-                    else
-                    {
-                        value *= RAD_TO_DEG;
-                    }
-                    resultDisplayTextBox.Text = value.ToString(); // Update result display
-                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text; // Optionally copy to expression
+                    value *= DEG_TO_RAD;
+                    resultDisplayTextBox.Text = value.ToString($"F{decimalPlaces}");
+                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text;
+                    isNewCalculation = true;
+                }
+                return;
+            }
+            else if (operation == "rad_to_deg") // DEG button clicked
+            {
+                // Toggle to Degrees mode if we're not already in it
+                isRadiansMode = false;
+                UpdateAngleModeButtonsDisplay();
+
+                // If there's a value in the result field, also convert it from RAD to DEG
+                double value;
+                if (double.TryParse(resultDisplayTextBox.Text, out value))
+                {
+                    value *= RAD_TO_DEG;
+                    resultDisplayTextBox.Text = value.ToString($"F{decimalPlaces}");
+                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text;
                     isNewCalculation = true;
                 }
                 return;
@@ -1734,6 +1769,32 @@ namespace RowHighligher
                 }
             }
         }
+
+        // Method to update the display of RAD/DEG buttons based on current mode
+        private void UpdateAngleModeButtonsDisplay()
+        {
+            Color activeColor = Color.LightSkyBlue;
+            Color defaultColor = SystemColors.Control;
+
+            // Find the RAD and DEG buttons using their tag values
+            Button radButton = null;
+            Button degButton = null;
+            
+            foreach (Button btn in scientificButtons)
+            {
+                if (btn.Tag.ToString() == "deg_to_rad")
+                    radButton = btn;
+                else if (btn.Tag.ToString() == "rad_to_deg")
+                    degButton = btn;
+            }
+
+            if (radButton != null && degButton != null)
+            {
+                // Set colors based on current mode
+                radButton.BackColor = isRadiansMode ? activeColor : defaultColor;
+                degButton.BackColor = isRadiansMode ? defaultColor : activeColor;
+            }
+        }
     }
 
     // Create a new class for the settings form
@@ -1815,7 +1876,7 @@ namespace RowHighligher
 
     public static class ExpressionEvaluator
     {
-        public static double Evaluate(string expression, int decimalPlaces)
+        public static double Evaluate(string expression, int decimalPlaces, bool isRadians = true)
         {
             // Replace symbolic constants
             expression = expression.Replace("π", Math.PI.ToString());
@@ -1845,13 +1906,13 @@ namespace RowHighligher
             expression = expression.Replace(" ", "").Replace("×", "*").Replace("÷", "/");
 
             // Evaluate functions recursively
-            expression = EvaluateFunctions(expression, decimalPlaces);
+            expression = EvaluateFunctions(expression, decimalPlaces, isRadians);
 
             DataTable dtFinal = new DataTable();
             return Convert.ToDouble(dtFinal.Compute(expression, ""));
         }
 
-        private static string EvaluateFunctions(string expression, int decimalPlaces)
+        private static string EvaluateFunctions(string expression, int decimalPlaces, bool isRadians = true)
         {
             string[] functions = { "sqrt", "sin", "cos", "tan", "log", "ln" };
             foreach (var func in functions)
@@ -1870,9 +1931,16 @@ namespace RowHighligher
                     if (openCount == 0)
                     {
                         string innerExpr = expression.Substring(idx + func.Length + 1, closeIdx - idx - func.Length - 2);
-                        innerExpr = EvaluateFunctions(innerExpr, decimalPlaces);
+                        innerExpr = EvaluateFunctions(innerExpr, decimalPlaces, isRadians);
                         DataTable dt = new DataTable();
                         double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                        
+                        // Convert degrees to radians for trigonometric functions if needed
+                        if (!isRadians && (func == "sin" || func == "cos" || func == "tan"))
+                        {
+                            innerValue = innerValue * Math.PI / 180.0; // convert degrees to radians
+                        }
+                        
                         double result = 0;
                         switch (func)
                         {
