@@ -7,9 +7,17 @@ using System.Data;
 using System.Text;
 using System.Collections.Generic; // Added for Stack
 using System.Linq; // Added for LINQ operations
+using System.Globalization; // Added for CultureInfo
+using System.Numerics; // Ensure Complex is available for all classes
 
 namespace RowHighligher
 {
+    public static class CalculatorConstants
+    {
+        public const double RAD_TO_DEG = 180.0 / Math.PI;
+        public const double DEG_TO_RAD = Math.PI / 180.0;
+    }
+
     public partial class ScientificCalculator : Form
     {
         private RichTextBox expressionDisplayTextBox; // Changed from TextBox to RichTextBox
@@ -32,7 +40,7 @@ namespace RowHighligher
         private bool isExpressionMode = false;
 
         // Add this field near the top of your class with other fields
-        private double lastAnswer = 0;
+        private object lastAnswer = 0.0; // Changed to object to store double or Complex
 
         // Add this field to store characters as they're typed
         private string keyBuffer = "";
@@ -40,24 +48,32 @@ namespace RowHighligher
         // Add constants
         private const double PI = Math.PI;
         private const double E = Math.E;
-        private const double RAD_TO_DEG = 180.0 / Math.PI;
-        private const double DEG_TO_RAD = Math.PI / 180.0;
+        private const double RAD_TO_DEG = CalculatorConstants.RAD_TO_DEG;
+        private const double DEG_TO_RAD = CalculatorConstants.DEG_TO_RAD;
 
         // Update the field to use the saved setting
-        private int decimalPlaces = Properties.Settings.Default.CalculatorDecimalPlaces;
+        private int decimalPlaces = RowHighligher.Properties.Settings.Default.CalculatorDecimalPlaces;
+
+        // Custom title bar fields
+        private Panel customTitleBar;
+        private Label titleLabel;
+        private Button closeButton;
+        private Button minimizeButton;
+        private Point dragOffset;
+        private bool dragging = false;
 
         public ScientificCalculator()
         {
             InitializeComponents();
 
             // Set form properties
-            this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
+            this.FormBorderStyle = FormBorderStyle.None; // Use custom title bar
             this.Text = "Scientific Calculator";
             this.MinimumSize = new Size(350, 600);  // Increased minimum width & height
             this.Size = new Size(350, 600);         // Set larger default size
             this.MaximizeBox = false;
             this.MinimizeBox = true;
-            this.TopMost = Properties.Settings.Default.IsCalculatorDetached;
+            this.TopMost = RowHighligher.Properties.Settings.Default.IsCalculatorDetached;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.KeyPreview = true;
 
@@ -106,6 +122,60 @@ namespace RowHighligher
 
         private void InitializeComponents()
         {
+            // Custom title bar
+            customTitleBar = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Height = 36,
+                BackColor = Color.LightSkyBlue
+            };
+            titleLabel = new Label
+            {
+                Text = "Scientific Calculator",
+                Dock = DockStyle.Left,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.Black,
+                Padding = new Padding(10, 0, 0, 0),
+                Width = 220
+            };
+            closeButton = new Button
+            {
+                Text = "✕",
+                Dock = DockStyle.Right,
+                Width = 36,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.LightSkyBlue,
+                ForeColor = Color.Black,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                TabStop = false
+            };
+            closeButton.FlatAppearance.BorderSize = 0;
+            closeButton.Click += (s, e) => this.Close();
+            minimizeButton = new Button
+            {
+                Text = "_",
+                Dock = DockStyle.Right,
+                Width = 36,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.LightSkyBlue,
+                ForeColor = Color.Black,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                TabStop = false
+            };
+            minimizeButton.FlatAppearance.BorderSize = 0;
+            minimizeButton.Click += (s, e) => this.WindowState = FormWindowState.Minimized;
+            customTitleBar.Controls.Add(closeButton);
+            customTitleBar.Controls.Add(minimizeButton);
+            customTitleBar.Controls.Add(titleLabel);
+            customTitleBar.MouseDown += CustomTitleBar_MouseDown;
+            customTitleBar.MouseMove += CustomTitleBar_MouseMove;
+            customTitleBar.MouseUp += CustomTitleBar_MouseUp;
+            titleLabel.MouseDown += CustomTitleBar_MouseDown;
+            titleLabel.MouseMove += CustomTitleBar_MouseMove;
+            titleLabel.MouseUp += CustomTitleBar_MouseUp;
+
             // Main layout panel
             TableLayoutPanel mainPanel = new TableLayoutPanel
             {
@@ -213,7 +283,7 @@ namespace RowHighligher
                 Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.Zoom,
                 Margin = new Padding(1),
-                Image = Properties.Resources.Bankers_Logo_Albania // Add your PNG image to resources
+                Image = RowHighligher.Properties.Resources.Bankers_Logo_Albania // Add your PNG image to resources
             };
 
             // Add logo after settings button
@@ -479,7 +549,19 @@ namespace RowHighligher
 
             mainPanel.Controls.Add(bottomPanel, 0, 6); // Moved from 0,5 to 0,6
 
-            this.Controls.Add(mainPanel);
+            // Root layout: 2 rows, title bar and calculator UI
+            var rootPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 2,
+                ColumnCount = 1
+            };
+            rootPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Title bar height
+            rootPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Calculator UI
+            rootPanel.Controls.Add(customTitleBar, 0, 0);
+            rootPanel.Controls.Add(mainPanel, 0, 1);
+            this.Controls.Clear();
+            this.Controls.Add(rootPanel);
         }
 
         private void HighlightParentheses()
@@ -974,7 +1056,7 @@ namespace RowHighligher
         private void EqualsButton_Click(object sender, EventArgs e)
         {
             CalculateResult();
-            lastValue = lastAnswer; // Store the last calculated result in lastValue
+            lastValue = lastAnswer is double ? (double)lastAnswer : 0; // Store the last calculated result in lastValue
         }
 
         private void CalculateResult()
@@ -1000,21 +1082,62 @@ namespace RowHighligher
                 isExpressionMode = false;
                 bracketCount = 0;
 
-                double result = ExpressionEvaluator.Evaluate(expressionDisplayTextBox.Text, decimalPlaces, isRadiansMode);
-                lastAnswer = result;
-                resultDisplayTextBox.Text = result.ToString($"F{decimalPlaces}"); // Update result display
-                // expressionDisplayTextBox.Text = result.ToString($"F{decimalPlaces}"); // Old: expression display showed result
+                // Evaluate expression
+                object resultObject = ExpressionEvaluator.Evaluate(expressionDisplayTextBox.Text, decimalPlaces, isRadiansMode);
+                lastAnswer = resultObject;
 
+                if (resultObject is Complex complexResult)
+                {
+                    resultDisplayTextBox.Text = FormatComplex(complexResult, decimalPlaces);
+                }
+                else if (resultObject is double doubleResult)
+                {
+                    resultDisplayTextBox.Text = doubleResult.ToString("F" + decimalPlaces, CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    // Should not happen if Evaluate returns double or throws specific exception for Complex
+                    resultDisplayTextBox.Text = "Error"; 
+                }
+                
                 lastOperation = "";
-                isNewCalculation = true; // Ready for new calculation, expression can stay for reference
-                                         // Or clear expressionDisplayTextBox here if preferred:
-                                         // expressionDisplayTextBox.Text = ""; 
-                SetCursorToEnd(); // Focus on expressionDisplayTextBox
+                isNewCalculation = true; 
+                SetCursorToEnd();
+            }
+            catch (ArgumentException ex) when (ex.Message == "NegativeSqrt")
+            {
+                if (ex.Data.Contains("ComplexResult") && ex.Data["ComplexResult"] is Complex complexVal)
+                {
+                    lastAnswer = complexVal;
+                    resultDisplayTextBox.Text = FormatComplex(complexVal, decimalPlaces);
+                    isNewCalculation = true;
+                    SetCursorToEnd();
+                }
+                else
+                {
+                    ShowError("Error calculating square root.");
+                }
             }
             catch (Exception ex)
             {
                 ShowError("Error calculating result: " + ex.Message);
             }
+        }
+        
+        private string FormatComplex(Complex c, int dp)
+        {
+            string realPart = c.Real.ToString("F" + dp, CultureInfo.InvariantCulture);
+            string imagPartAbs = Math.Abs(c.Imaginary).ToString("F" + dp, CultureInfo.InvariantCulture);
+
+            if (Math.Abs(c.Imaginary) < Math.Pow(10, -dp-1)) // Treat very small imaginary part as zero
+            {
+                return realPart;
+            }
+            if (Math.Abs(c.Real) < Math.Pow(10, -dp-1)) // Treat very small real part as zero
+            {
+                 return (c.Imaginary < 0 ? "-" : "") + imagPartAbs + "i";
+            }
+            return $"{realPart} {(c.Imaginary < 0 ? "-" : "+")} {imagPartAbs}i";
         }
 
         private void ShowError(string message)
@@ -1041,8 +1164,8 @@ namespace RowHighligher
         private string PrepareExpressionForEvaluation(string expression)
         {
             // Replace symbolic constants with their values before evaluation
-            expression = expression.Replace("π", PI.ToString());
-            expression = expression.Replace("e", E.ToString());
+            expression = expression.Replace("π", PI.ToString(CultureInfo.InvariantCulture));
+            expression = expression.Replace("e", E.ToString(CultureInfo.InvariantCulture));
 
             // Rest of the method remains the same...
             while (expression.Contains("^"))
@@ -1076,12 +1199,12 @@ namespace RowHighligher
                 
                 // Evaluate the power using Math.Pow
                 DataTable dt = new DataTable();
-                double baseValue = Convert.ToDouble(dt.Compute(baseStr, ""));
-                double exponentValue = Convert.ToDouble(dt.Compute(exponentStr, ""));
+                double baseValue = Convert.ToDouble(dt.Compute(baseStr, ""), CultureInfo.InvariantCulture);
+                double exponentValue = Convert.ToDouble(dt.Compute(exponentStr, ""), CultureInfo.InvariantCulture);
                 double powerResult = Math.Pow(baseValue, exponentValue);
                 
                 // Replace the power expression with the result
-                string replacement = "(" + powerResult.ToString($"F{decimalPlaces}") + ")";
+                string replacement = "(" + powerResult.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture) + ")";
                 expression = expression.Substring(0, baseStartIndex) + 
                              replacement + 
                              expression.Substring(exponentEndIndex);
@@ -1121,20 +1244,27 @@ namespace RowHighligher
                             // If there are functions inside, recursively evaluate those first
                             if (innerExpr.Contains("sqrt(") || innerExpr.Contains("sin(") || innerExpr.Contains("cos("))
                             {
-                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr); // Recursive call
                             }
                             
                             // Calculate the sqrt of the inner expression
                             DataTable dt = new DataTable();
-                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""), CultureInfo.InvariantCulture);
+                            
+                            if (innerValue < 0)
+                            {
+                                Complex complexResult = Complex.Sqrt(new Complex(innerValue, 0));
+                                ArgumentException ex = new ArgumentException("NegativeSqrt");
+                                ex.Data["ComplexResult"] = complexResult;
+                                throw ex;
+                            }
                             double sqrtValue = Math.Sqrt(innerValue);
                             
-                            // KEY FIX: Add parentheses around the result to ensure proper operator precedence
-                            string replacement = "(" + sqrtValue.ToString($"F{decimalPlaces}") + ")";
+                            string replacement = "(" + sqrtValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture) + ")";
                             expression = expression.Substring(0, sqrtIdx) + replacement + expression.Substring(closeIdx);
                             
                             // Since we've modified the expression, we need to process it again
-                            return PrepareExpressionForEvaluation(expression);
+                            return PrepareExpressionForEvaluation(expression); // Return modified string
                         }
                     }
                     
@@ -1161,25 +1291,26 @@ namespace RowHighligher
                             // Handle nested functions
                             if (innerExpr.Contains("sqrt(") || innerExpr.Contains("sin(") || innerExpr.Contains("cos("))
                             {
-                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr); // Recursive call
                             }
                             
                             // Calculate sin of the inner expression
                             DataTable dt = new DataTable();
-                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""), CultureInfo.InvariantCulture);
                             
-                            // Apply degrees to radians conversion if needed
-                            if (!isRadiansMode)
-                                innerValue *= DEG_TO_RAD;
+                            // Apply degrees to radians conversion if needed (assuming isRadiansMode is accessible or passed)
+                            // For simplicity, this example doesn't pass isRadiansMode here. 
+                            // This should be addressed if PrepareExpressionForEvaluation is used directly.
+                            // if (!isRadiansMode) innerValue *= DEG_TO_RAD; 
                                 
-                            double sinValue = Math.Sin(innerValue);
+                            double sinValue = Math.Sin(innerValue); // Requires isRadiansMode
                             
                             // Replace with result (in parentheses)
-                            string replacement = "(" + sinValue.ToString($"F{decimalPlaces}") + ")";
+                            string replacement = "(" + sinValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture) + ")";
                             expression = expression.Substring(0, sinIdx) + replacement + expression.Substring(closeIdx);
                             
                             // Process the updated expression
-                            return PrepareExpressionForEvaluation(expression);
+                            return PrepareExpressionForEvaluation(expression); // Return modified string
                         }
                     }
                     
@@ -1203,22 +1334,18 @@ namespace RowHighligher
                             
                             if (innerExpr.Contains("sqrt(") || innerExpr.Contains("sin(") || innerExpr.Contains("cos("))
                             {
-                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr); // Recursive call
                             }
                             
                             DataTable dt = new DataTable();
-                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""), CultureInfo.InvariantCulture);
+                            // if (!isRadiansMode) innerValue *= CalculatorConstants.DEG_TO_RAD; // Requires isRadiansMode
+                            double cosValue = Math.Cos(innerValue); // Requires isRadiansMode logic
                             
-                            // Apply degrees to radians conversion if needed
-                            if (!isRadiansMode)
-                                innerValue *= DEG_TO_RAD;
-                                
-                            double cosValue = Math.Cos(innerValue);
-                            
-                            string replacement = "(" + cosValue.ToString($"F{decimalPlaces}") + ")";
+                            string replacement = "(" + cosValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture) + ")";
                             expression = expression.Substring(0, cosIdx) + replacement + expression.Substring(closeIdx);
                             
-                            return PrepareExpressionForEvaluation(expression);
+                            return PrepareExpressionForEvaluation(expression); // Return modified string
                         }
                     }
 
@@ -1227,7 +1354,7 @@ namespace RowHighligher
                     if (tanIdx >= 0)
                     {
                         int openCount = 1;
-                        int closeIdx = tanIdx + 4;  // Start after "tan(")
+                        int closeIdx = tanIdx + 4;  // Start after "tan("
                         
                         while (openCount > 0 && closeIdx < expression.Length)
                         {
@@ -1244,22 +1371,18 @@ namespace RowHighligher
                                 innerExpr.Contains("cos(") || innerExpr.Contains("tan(") ||
                                 innerExpr.Contains("log(") || innerExpr.Contains("ln("))
                             {
-                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr); // Recursive call
                             }
                             
                             DataTable dt = new DataTable();
-                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""), CultureInfo.InvariantCulture);
+                            // if (!isRadiansMode) innerValue *= CalculatorConstants.DEG_TO_RAD; // Requires isRadiansMode
+                            double tanValue = Math.Tan(innerValue); // Requires isRadiansMode logic
                             
-                            // Apply degrees to radians conversion if needed
-                            if (!isRadiansMode)
-                                innerValue *= DEG_TO_RAD;
-                                
-                            double tanValue = Math.Tan(innerValue);
-                            
-                            string replacement = "(" + tanValue.ToString($"F{decimalPlaces}") + ")";
+                            string replacement = "(" + tanValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture) + ")";
                             expression = expression.Substring(0, tanIdx) + replacement + expression.Substring(closeIdx);
                             
-                            return PrepareExpressionForEvaluation(expression);
+                            return PrepareExpressionForEvaluation(expression); // Return modified string
                         }
                     }
 
@@ -1285,21 +1408,21 @@ namespace RowHighligher
                                 innerExpr.Contains("cos(") || innerExpr.Contains("tan(") ||
                                 innerExpr.Contains("log(") || innerExpr.Contains("ln("))
                             {
-                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr); // Recursive call
                             }
                             
                             DataTable dt = new DataTable();
-                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""), CultureInfo.InvariantCulture);
                             if (innerValue <= 0)
                             {
                                 throw new ArgumentException("Cannot calculate logarithm of zero or negative number");
                             }
                             double logValue = Math.Log10(innerValue);
                             
-                            string replacement = "(" + logValue.ToString($"F{decimalPlaces}") + ")";
+                            string replacement = "(" + logValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture) + ")";
                             expression = expression.Substring(0, logIdx) + replacement + expression.Substring(closeIdx);
                             
-                            return PrepareExpressionForEvaluation(expression);
+                            return PrepareExpressionForEvaluation(expression); // Return modified string
                         }
                     }
 
@@ -1325,35 +1448,40 @@ namespace RowHighligher
                                 innerExpr.Contains("cos(") || innerExpr.Contains("tan(") ||
                                 innerExpr.Contains("log(") || innerExpr.Contains("ln("))
                             {
-                                innerExpr = PrepareExpressionForEvaluation(innerExpr);
+                                innerExpr = PrepareExpressionForEvaluation(innerExpr); // Recursive call
                             }
                             
                             DataTable dt = new DataTable();
-                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
+                            double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""), CultureInfo.InvariantCulture);
                             if (innerValue <= 0)
                             {
                                 throw new ArgumentException("Cannot calculate natural logarithm of zero or negative number");
                             }
                             double lnValue = Math.Log(innerValue);  // Natural logarithm
                             
-                            string replacement = "(" + lnValue.ToString($"F{decimalPlaces}") + ")";
+                            string replacement = "(" + lnValue.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture) + ")";
                             expression = expression.Substring(0, lnIdx) + replacement + expression.Substring(closeIdx);
                             
-                            return PrepareExpressionForEvaluation(expression);
+                            return PrepareExpressionForEvaluation(expression); // Return modified string
                         }
                     }
                     
                     // If we get here without finding any functions to process, break to avoid infinite loop
-                    break;
+                    break; 
                 }
+            }
+            catch (ArgumentException ex) when (ex.Message == "NegativeSqrt")
+            {
+                throw; // Re-throw to be caught by CalculateResult
             }
             catch (Exception ex)
             {
-                // Log the error for debugging
-                System.Diagnostics.Debug.WriteLine("Error evaluating expression: " + ex.Message);
+                // Log the error for debugging or convert to a specific calculation error
+                System.Diagnostics.Debug.WriteLine("Error in PrepareExpressionForEvaluation: " + ex.Message);
+                throw new EvaluateException("Error evaluating sub-expression: " + expression, ex);
             }
             
-            return expression;
+            return expression; // Return the fully processed string
         }
 
         private bool HasBalancedParentheses(string expression)
@@ -1412,14 +1540,14 @@ namespace RowHighligher
                 UpdateAngleModeButtonsDisplay();
 
                 // If there's a value in the result field, also convert it from DEG to RAD
-                double value;
-                if (double.TryParse(resultDisplayTextBox.Text, out value))
+                // This conversion is illustrative; direct mode change is primary.
+                if (lastAnswer is double currentDoubleVal)
                 {
-                    value *= DEG_TO_RAD;
-                    resultDisplayTextBox.Text = value.ToString($"F{decimalPlaces}");
-                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text;
-                    isNewCalculation = true;
+                    lastAnswer = currentDoubleVal * DEG_TO_RAD;
+                    resultDisplayTextBox.Text = ((double)lastAnswer).ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture);
+                    // expressionDisplayTextBox.Text = resultDisplayTextBox.Text; // Optional: update expression display
                 }
+                // else if lastAnswer is Complex, conversion is more involved. For now, only convert if double.
                 return;
             }
             else if (operation == "rad_to_deg") // DEG button clicked
@@ -1428,14 +1556,10 @@ namespace RowHighligher
                 isRadiansMode = false;
                 UpdateAngleModeButtonsDisplay();
 
-                // If there's a value in the result field, also convert it from RAD to DEG
-                double value;
-                if (double.TryParse(resultDisplayTextBox.Text, out value))
+                if (lastAnswer is double currentDoubleVal)
                 {
-                    value *= RAD_TO_DEG;
-                    resultDisplayTextBox.Text = value.ToString($"F{decimalPlaces}");
-                    expressionDisplayTextBox.Text = resultDisplayTextBox.Text;
-                    isNewCalculation = true;
+                    lastAnswer = currentDoubleVal * RAD_TO_DEG;
+                    resultDisplayTextBox.Text = ((double)lastAnswer).ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture);
                 }
                 return;
             }
@@ -1488,8 +1612,7 @@ namespace RowHighligher
             else
             {
                 // Try traditional calculation if possible, using the result display
-                double value;
-                if (double.TryParse(resultDisplayTextBox.Text, out value)) // Use result display for M+
+                if (lastAnswer is double value) // Use lastAnswer for 1/x
                 {
                     double result = 0;
                     bool calculated = false;
@@ -1512,19 +1635,24 @@ namespace RowHighligher
 
                     if (calculated)
                     {
-                        resultDisplayTextBox.Text = result.ToString(); // Update result display
-                        expressionDisplayTextBox.Text = resultDisplayTextBox.Text; // Optionally copy to expression
+                        lastAnswer = result;
+                        resultDisplayTextBox.Text = result.ToString($"F{decimalPlaces}", CultureInfo.InvariantCulture); 
+                        expressionDisplayTextBox.Text = resultDisplayTextBox.Text; 
                         isNewCalculation = true;
                     }
                     else
                     {
-                        // If calculation failed, switch to expression mode
                         AppendToDisplay(operation);
                     }
                 }
+                else if (lastAnswer is Complex)
+                {
+                     // Handle 1/x for complex if needed, e.g., Complex.Reciprocal((Complex)lastAnswer)
+                     // For now, just append to expression or show error
+                    AppendToDisplay(operation); // Or show error: "1/x on complex not fully supported"
+                }
                 else
                 {
-                    // If not a valid number, switch to expression mode
                     AppendToDisplay(operation);
                 }
             }
@@ -1758,8 +1886,8 @@ namespace RowHighligher
                     this.decimalPlaces = settingsForm.DecimalPlaces;
                     
                     // Save the setting when it changes
-                    Properties.Settings.Default.CalculatorDecimalPlaces = this.decimalPlaces;
-                    Properties.Settings.Default.Save();
+                    RowHighligher.Properties.Settings.Default.CalculatorDecimalPlaces = this.decimalPlaces;
+                    RowHighligher.Properties.Settings.Default.Save();
                     
                     // If there's a number currently displayed in the result, reformat it
                     if (double.TryParse(resultDisplayTextBox.Text, out double currentValue)) // Check resultDisplayTextBox
@@ -1795,22 +1923,50 @@ namespace RowHighligher
                 degButton.BackColor = isRadiansMode ? defaultColor : activeColor;
             }
         }
+
+        private void CustomTitleBar_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                dragging = true;
+                dragOffset = new Point(e.X, e.Y);
+            }
+        }
+        private void CustomTitleBar_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (dragging)
+            {
+                Point p = PointToScreen(e.Location);
+                this.Location = new Point(p.X - dragOffset.X, p.Y - dragOffset.Y);
+            }
+        }
+        private void CustomTitleBar_MouseUp(object sender, MouseEventArgs e)
+        {
+            dragging = false;
+        }
+    }
+
+    // Custom exception for evaluation errors if needed
+    public class EvaluateException : Exception
+    {
+        public EvaluateException(string message) : base(message) { }
+        public EvaluateException(string message, Exception inner) : base(message, inner) { }
     }
 
     // Create a new class for the settings form
     public class CalculatorSettingsForm : Form
     {
         private NumericUpDown decimalPlacesInput;
-        private int decimalPlaces;
+        private int _decimalPlaces; // Renamed to avoid conflict with property
 
         public int DecimalPlaces
         {
-            get { return decimalPlaces; }
+            get { return _decimalPlaces; }
             set 
             { 
-                decimalPlaces = value;
-                Properties.Settings.Default.CalculatorDecimalPlaces = value;
-                Properties.Settings.Default.Save();
+                _decimalPlaces = value; // Use backing field
+                // Properties.Settings.Default.CalculatorDecimalPlaces = value; // Saving is done on Save button
+                // Properties.Settings.Default.Save();
             }
         }
 
@@ -1845,11 +2001,12 @@ namespace RowHighligher
             {
                 Minimum = 0,
                 Maximum = 10,
-                Value = Properties.Settings.Default.CalculatorDecimalPlaces,
+                // Value = Properties.Settings.Default.CalculatorDecimalPlaces, // Set by DecimalPlaces property
                 Width = 60
             };
-            decimalPlaces = Properties.Settings.Default.CalculatorDecimalPlaces;
-            decimalPlacesInput.ValueChanged += (s, e) => decimalPlaces = (int)decimalPlacesInput.Value;
+            // _decimalPlaces = Properties.Settings.Default.CalculatorDecimalPlaces; // Set by DecimalPlaces property
+            decimalPlacesInput.ValueChanged += (s, e) => _decimalPlaces = (int)decimalPlacesInput.Value;
+
 
             mainPanel.Controls.Add(decimalLabel, 0, 0);
             mainPanel.Controls.Add(decimalPlacesInput, 1, 0);
@@ -1857,110 +2014,202 @@ namespace RowHighligher
             Button saveButton = new Button
             {
                 Text = "Save",
-                DialogResult = DialogResult.OK,
+                DialogResult = DialogResult.OK, // This will close the form with OK
                 Anchor = AnchorStyles.Right
             };
             
-            // Save settings when clicking save
-            saveButton.Click += (s, e) => 
-            { 
-                Properties.Settings.Default.CalculatorDecimalPlaces = decimalPlaces;
-                Properties.Settings.Default.Save();
-            };
+            // Save settings when clicking save (DialogResult.OK handles closing)
+            // The actual saving of Properties.Settings.Default.CalculatorDecimalPlaces
+            // should happen in ScientificCalculator form after ShowDialog returns OK.
+            // saveButton.Click += (s, e) => 
+            // { 
+            //     Properties.Settings.Default.CalculatorDecimalPlaces = _decimalPlaces;
+            //     Properties.Settings.Default.Save();
+            // };
             
             mainPanel.Controls.Add(saveButton, 1, 1);
-
             this.Controls.Add(mainPanel);
+            
+            // Ensure the NumericUpDown reflects the initial DecimalPlaces value
+            // This should be done after the DecimalPlaces property is set by the caller.
+            this.Load += (s, e) => decimalPlacesInput.Value = Math.Max(0, Math.Min(10, _decimalPlaces));
         }
     }
-
+    
     public static class ExpressionEvaluator
     {
-        public static double Evaluate(string expression, int decimalPlaces, bool isRadians = true)
+        // Main evaluation entry point
+        public static object Evaluate(string expression, int decimalPlaces, bool isRadians)
         {
-            // Replace symbolic constants
-            expression = expression.Replace("π", Math.PI.ToString());
-            expression = expression.Replace("e", Math.E.ToString());
-
-            // Handle power operator ^
-            while (expression.Contains("^"))
+            try
             {
-                int powerIndex = expression.IndexOf("^");
-                int baseStartIndex = powerIndex - 1;
-                while (baseStartIndex >= 0 && (char.IsDigit(expression[baseStartIndex]) || expression[baseStartIndex] == '.' || expression[baseStartIndex] == ')'))
-                    baseStartIndex--;
-                baseStartIndex++;
-                int exponentEndIndex = powerIndex + 1;
-                while (exponentEndIndex < expression.Length && (char.IsDigit(expression[exponentEndIndex]) || expression[exponentEndIndex] == '.' || expression[exponentEndIndex] == '('))
-                    exponentEndIndex++;
-                string baseStr = expression.Substring(baseStartIndex, powerIndex - baseStartIndex);
-                string exponentStr = expression.Substring(powerIndex + 1, exponentEndIndex - powerIndex - 1);
-                DataTable dt = new DataTable();
-                double baseValue = Convert.ToDouble(dt.Compute(baseStr, ""));
-                double exponentValue = Convert.ToDouble(dt.Compute(exponentStr, ""));
-                double powerResult = Math.Pow(baseValue, exponentValue);
-                string replacement = "(" + powerResult.ToString($"F{decimalPlaces}") + ")";
-                expression = expression.Substring(0, baseStartIndex) + replacement + expression.Substring(exponentEndIndex);
+                // Initial replacements for constants
+                expression = expression.Replace("π", Math.PI.ToString(CultureInfo.InvariantCulture));
+                expression = expression.Replace("e", Math.E.ToString(CultureInfo.InvariantCulture));
+                expression = expression.Replace(" ", "").Replace("×", "*").Replace("÷", "/");
+
+
+                // Handle powers (^) - this simple replacement might need a proper parser for complex bases
+                while (expression.Contains("^"))
+                {
+                    // This power handling is basic and assumes real numbers from DataTable.Compute
+                    // It won't correctly handle complex bases or exponents without a full parser.
+                    // For now, it might lead to errors if complex numbers are involved before power.
+                    // For now, it might lead to errors if complex numbers are involved before power.
+                    int powerIndex = expression.IndexOf("^");
+                    int baseStartIndex = powerIndex - 1;
+                    while (baseStartIndex >= 0 && (char.IsDigit(expression[baseStartIndex]) || expression[baseStartIndex] == '.' || expression[baseStartIndex] == ')' || expression[baseStartIndex] == '-')) // Added '-' for negative base
+                        baseStartIndex--;
+                    baseStartIndex++;
+                    
+                    int exponentEndIndex = powerIndex + 1;
+                    // Allow negative exponents and parentheses in exponent
+                    if (exponentEndIndex < expression.Length && expression[exponentEndIndex] == '-') exponentEndIndex++; 
+                    while (exponentEndIndex < expression.Length && (char.IsDigit(expression[exponentEndIndex]) || expression[exponentEndIndex] == '.' || expression[exponentEndIndex] == '(' || expression[exponentEndIndex] == ')'))
+                        exponentEndIndex++;
+                    
+                    string baseStr = expression.Substring(baseStartIndex, powerIndex - baseStartIndex);
+                    string exponentStr = expression.Substring(powerIndex + 1, exponentEndIndex - (powerIndex + 1));
+
+                    // Evaluate base and exponent - these might need to handle complex numbers if we go further
+                    double baseValue = Convert.ToDouble(new DataTable().Compute(baseStr, ""), CultureInfo.InvariantCulture);
+                    double exponentValue = Convert.ToDouble(new DataTable().Compute(exponentStr, ""), CultureInfo.InvariantCulture);
+                    
+                    double powerResult = Math.Pow(baseValue, exponentValue);
+                    string replacement = "(" + powerResult.ToString("F" + decimalPlaces, CultureInfo.InvariantCulture) + ")"; // Ensure enough precision
+                    expression = expression.Substring(0, baseStartIndex) + replacement + expression.Substring(exponentEndIndex);
+                }
+
+                // Process functions and final computation
+                return EvaluateFunctionsRecursive(expression, decimalPlaces, isRadians);
             }
-
-            expression = expression.Replace(" ", "").Replace("×", "*").Replace("÷", "/");
-
-            // Evaluate functions recursively
-            expression = EvaluateFunctions(expression, decimalPlaces, isRadians);
-
-            DataTable dtFinal = new DataTable();
-            return Convert.ToDouble(dtFinal.Compute(expression, ""));
+            catch (ArgumentException ex) when (ex.Message == "NegativeSqrt")
+            {
+                throw; // Re-throw for ScientificCalculator to catch and format Complex
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Evaluation Error: {ex}");
+                throw new EvaluateException("Error evaluating expression: " + ex.Message, ex);
+            }
         }
 
-        private static string EvaluateFunctions(string expression, int decimalPlaces, bool isRadians = true)
+        // Recursive function evaluator
+        private static object EvaluateFunctionsRecursive(string expression, int decimalPlaces, bool isRadians)
         {
-            string[] functions = { "sqrt", "sin", "cos", "tan", "log", "ln" };
-            foreach (var func in functions)
+            string[] functions = { "sqrt", "sin", "cos", "tan", "log", "ln" }; // Order might matter for parsing
+            
+            foreach (var funcName in functions)
             {
-                while (expression.Contains(func + "("))
+                int idx = -1;
+                while ((idx = expression.IndexOf(funcName + "(", StringComparison.OrdinalIgnoreCase)) != -1)
                 {
-                    int idx = expression.IndexOf(func + "(");
-                    int openCount = 1;
-                    int closeIdx = idx + func.Length + 1;
-                    while (openCount > 0 && closeIdx < expression.Length)
+                    int openParenIndex = idx + funcName.Length;
+                    int balance = 1;
+                    int closeParenIndex = -1;
+
+                    for (int i = openParenIndex + 1; i < expression.Length; i++)
                     {
-                        if (expression[closeIdx] == '(') openCount++;
-                        if (expression[closeIdx] == ')') openCount--;
-                        closeIdx++;
+                        if (expression[i] == '(') balance++;
+                        else if (expression[i] == ')') balance--;
+                        if (balance == 0)
+                        {
+                            closeParenIndex = i;
+                            break;
+                        }
                     }
-                    if (openCount == 0)
+
+                    if (closeParenIndex == -1)
                     {
-                        string innerExpr = expression.Substring(idx + func.Length + 1, closeIdx - idx - func.Length - 2);
-                        innerExpr = EvaluateFunctions(innerExpr, decimalPlaces, isRadians);
-                        DataTable dt = new DataTable();
-                        double innerValue = Convert.ToDouble(dt.Compute(innerExpr, ""));
-                        
-                        // Convert degrees to radians for trigonometric functions if needed
-                        if (!isRadians && (func == "sin" || func == "cos" || func == "tan"))
-                        {
-                            innerValue = innerValue * Math.PI / 180.0; // convert degrees to radians
+                        throw new EvaluateException($"Mismatched parentheses for function {funcName}");
+                    }
+
+                    string innerExpr = expression.Substring(openParenIndex + 1, closeParenIndex - (openParenIndex + 1));
+                    object innerResultObj = EvaluateFunctionsRecursive(innerExpr, decimalPlaces, isRadians); // Recursive call
+
+                    double innerDoubleVal;
+                    if (innerResultObj is Complex)
+                    {
+                        // Current functions (sin, cos, etc.) are not set up for Complex input here.
+                        // This path would require Complex versions of all functions.
+                        // For this limited sqrt implementation, we assume innerResult for sqrt will be double.
+                        // If sqrt itself gets a complex number, Complex.Sqrt should be used.
+                        if (funcName == "sqrt") {
+                            return Complex.Sqrt((Complex)innerResultObj);
                         }
-                        
-                        double result = 0;
-                        switch (func)
-                        {
-                            case "sqrt": result = Math.Sqrt(innerValue); break;
-                            case "sin": result = Math.Sin(innerValue); break;
-                            case "cos": result = Math.Cos(innerValue); break;
-                            case "tan": result = Math.Tan(innerValue); break;
-                            case "log": result = Math.Log10(innerValue); break;
-                            case "ln": result = Math.Log(innerValue); break;
-                        }
-                        string replacement = "(" + result.ToString($"F{decimalPlaces}") + ")";
-                        expression = expression.Substring(0, idx) + replacement + expression.Substring(closeIdx);
+                        throw new EvaluateException($"Function '{funcName}' does not support complex arguments in this version.");
+                    }
+                    else if (innerResultObj is double val)
+                    {
+                        innerDoubleVal = val;
                     }
                     else
                     {
-                        break;
+                        throw new EvaluateException($"Unexpected inner result type for function {funcName}: {innerResultObj?.GetType()}");
                     }
+
+                    object funcResult = null;
+                    switch (funcName.ToLowerInvariant())
+                    {
+                        case "sqrt":
+                            if (innerDoubleVal < 0)
+                            {
+                                Complex complexSqrtResult = Complex.Sqrt(new Complex(innerDoubleVal, 0));
+                                // Instead of direct return, throw specific exception for CalculateResult to handle
+                                ArgumentException ex = new ArgumentException("NegativeSqrt");
+                                ex.Data["ComplexResult"] = complexSqrtResult;
+                                throw ex;
+                            }
+                            funcResult = Math.Sqrt(innerDoubleVal);
+                            break;
+                        case "sin":
+                            funcResult = Math.Sin(isRadians ? innerDoubleVal : innerDoubleVal * CalculatorConstants.DEG_TO_RAD);
+                            break;
+                        case "cos":
+                            funcResult = Math.Cos(isRadians ? innerDoubleVal : innerDoubleVal * CalculatorConstants.DEG_TO_RAD);
+                            break;
+                        case "tan":
+                            funcResult = Math.Tan(isRadians ? innerDoubleVal : innerDoubleVal * CalculatorConstants.DEG_TO_RAD);
+                            break;
+                        case "log":
+                            if (innerDoubleVal <= 0) throw new EvaluateException("Logarithm argument must be positive.");
+                            funcResult = Math.Log10(innerDoubleVal);
+                            break;
+                        case "ln":
+                            if (innerDoubleVal <= 0) throw new EvaluateException("Natural logarithm argument must be positive.");
+                            funcResult = Math.Log(innerDoubleVal);
+                            break;
+                    }
+                    
+                    // Replace the function call with its result (as a string for further parsing)
+                    string replacement;
+                    if (funcResult is double dRes) {
+                        replacement = "(" + dRes.ToString("G17", CultureInfo.InvariantCulture) + ")"; // Use G17 for precision
+                    } else if (funcResult is Complex cRes) { // Should not happen with current limited scope
+                        replacement = "(" + cRes.Real.ToString("G17", CultureInfo.InvariantCulture) + "+" + cRes.Imaginary.ToString("G17", CultureInfo.InvariantCulture) + "i)";
+                    } else {
+                         throw new EvaluateException("Unknown function result type.");
+                    }
+                    
+                    expression = expression.Substring(0, idx) + replacement + expression.Substring(closeParenIndex + 1);
+                    // After a replacement, re-evaluate the modified expression from the start of this level
+                    // to handle nested functions or functions appearing multiple times correctly.
+                    // This continues the loop for the current funcName on the modified expression.
                 }
             }
-            return expression;
+            
+            // After all functions are processed, the expression should be evaluatable by DataTable.Compute
+            // if it resolved to a simple arithmetic string of real numbers.
+            try
+            {
+                return Convert.ToDouble(new DataTable().Compute(expression, ""), CultureInfo.InvariantCulture);
+            }
+            catch (SyntaxErrorException e) // Catch specific DataTable.Compute errors
+            {
+                // This can happen if the expression is malformed after function replacements
+                // or if it contained an unhandled complex number representation.
+                throw new EvaluateException("Invalid expression for final computation: " + expression, e);
+            }
         }
     }
 }

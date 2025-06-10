@@ -32,7 +32,7 @@ namespace RowHighligher
             // Add event handlers for custom drawing
             tabControl.DrawItem += new DrawItemEventHandler(TabControl_DrawItem);
 
-            // Settings Tab (New)
+            // Settings Tab (Updated)
             TabPage settingsTab = CreateHelpTab("Settings", @"Calculator Settings
 
 General Settings:

@@ -36,14 +36,14 @@ namespace RowHighligher
             // Overview Tab
             TabPage overviewTab = CreateHelpTab("Overview", @"Units Converter Overview
 
-The Units Converter is a powerful tool for converting between different measurement units commonly used in the oil and gas industry.
+The Units Converter is a powerful tool for converting between a wide range of measurement units, including those commonly used in the oil, gas, and engineering industries.
 
 Main Features:
 • Convert between different units within the same category
-• Multiple unit categories: Length, Volume, Pressure, Temperature, etc.
+• Extensive unit categories: Length, Volume, Pressure, Temperature, Energy, Density, Time, Force, Speed, Flow Rate, Dynamic Viscosity, Kinematic Viscosity, Power, Torque
 • Get values directly from Excel cells
 • Insert conversion results back to Excel
-• Swap units with a single click
+• Swap units with a single click (swaps only the units, not the values)
 • Automatic unit categorization
 • Symbol display for easy reference
 
@@ -59,7 +59,7 @@ Getting Started:
 • Select a category from the dropdown menu
 • Enter a value to convert
 • Select the original unit (from) and target unit (to)
-• Click Convert to perform the conversion
+• Click Convert or press Enter to perform the conversion
 • Use Insert Result to place the value in Excel");
 
             // Basic Usage Tab
@@ -68,12 +68,13 @@ Getting Started:
 Step-by-Step Guide:
 
 1. Select a Category:
-   • Choose from Length, Liquid Volume, Gas Volume, Mass, Pressure, Temperature, Energy, or Density
+   • Choose from: Length, Liquid Volume, Gas Volume, Mass, Pressure, Temperature, Energy, Density, Time, Force, Speed, Flow Rate, Dynamic Viscosity, Kinematic Viscosity, Power, Torque
    • Each category contains relevant units for that measurement type
 
 2. Enter Input Value:
    • Type a number directly in the input field, or
-   • Use the ""Get value from cell"" button to import from the active Excel cell
+   • Use the 'Get value from cell' button to import from the active Excel cell
+   • Press Enter to convert instantly
 
 3. Select Units:
    • From Unit: Select the original unit of your value
@@ -81,15 +82,15 @@ Step-by-Step Guide:
    • Units display their symbols in brackets for easy identification [m], [ft], etc.
 
 4. Convert:
-   • Click the blue ""Convert"" button to perform the calculation
+   • Click the blue 'Convert' button or press Enter to perform the calculation
    • Result appears in the result field
 
 5. Use the Result:
    • View the converted value in the result field
-   • Click ""Insert Result"" to place the value in the active Excel cell
+   • Click 'Insert Result' to place the value in the active Excel cell
 
 Tips:
-   • Use the ""↑↓ Swap Units"" button to reverse the conversion direction
+   • Use the '↑↓ Swap Units' button to reverse the conversion direction (swaps only the units)
    • The converter remembers your last category selection
    • Units are organized by industry-standard categories
    • You can detach the converter window to keep it visible while working");
@@ -97,64 +98,55 @@ Tips:
             // Unit Categories Tab
             TabPage categoriesTab = CreateHelpTab("Unit Categories", @"Available Unit Categories
 
-The Units Converter includes the following categories, each with specific units relevant to oil and gas operations:
+The Units Converter includes the following categories, each with specific units:
 
 1. Length
-   • meter [m] - Base SI unit for length
-   • kilometer [km] - 1000 meters
-   • foot [ft] - 0.3048 meters
-   • inch [in] - 0.0254 meters
-   • mile [mi] - 1609.344 meters
+   • meter [m], kilometer [km], foot [ft], inch [in], mile [mi]
 
 2. Liquid Volume
-   • liter [L] - Base unit for liquid volume conversion
-   • cubic meter [m³] - 1000 liters
-   • US gallon [gal] - 3.78541 liters
-   • barrel (oil) [bbl] - 158.987 liters
-   • cubic foot [ft³] - 28.3168 liters
+   • liter [L], cubic meter [m³], US gallon [gal], barrel (oil) [bbl], cubic foot [ft³]
 
 3. Gas Volume
-   • standard cubic meter [Sm³] - Base unit for gas volume
-   • standard cubic foot [scf] - 0.0283168 Sm³
-   • thousand standard cubic feet [Mscf] - 28.3168 Sm³
-   • million standard cubic feet [MMscf] - 28316.8 Sm³
-   • billion standard cubic feet [Bscf] - 28316800.0 Sm³
-   • normal cubic meter [Nm³] - At normal conditions
-   • million standard cubic meters [MMSm³] - 1000000.0 Sm³
+   • standard cubic meter [Sm³], standard cubic foot [scf], thousand standard cubic feet [Mscf], million standard cubic feet [MMscf], billion standard cubic feet [Bscf], normal cubic meter [Nm³], million standard cubic meters [MMSm³]
 
 4. Mass
-   • kilogram [kg] - Base SI unit for mass
-   • metric ton [t] - 1000 kg
-   • short ton [ton] - 907.185 kg
-   • long ton [long ton] - 1016.05 kg
-   • pound [lb] - 0.453592 kg
+   • kilogram [kg], metric ton [t], short ton [ton], long ton [long ton], pound [lb]
 
 5. Pressure
-   • bar [bar] - Base unit for pressure conversion
-   • psi [psi] - 0.0689476 bar
-   • kPa [kPa] - 0.01 bar
-   • atm [atm] - 1.01325 bar
+   • bar [bar], psi [psi], kPa [kPa], atm [atm]
 
 6. Temperature
-   • Celsius [°C] - Base unit for temperature conversion
-   • Fahrenheit [°F] - (°F = °C × 9/5 + 32)
-   • Kelvin [K] - (K = °C + 273.15)
+   • Celsius [°C], Fahrenheit [°F], Kelvin [K]
 
 7. Energy
-   • joule [J] - Base SI unit for energy
-   • kilojoule [kJ] - 1000 joules
-   • British Thermal Unit [BTU] - 1055.06 joules
-   • therm [thm] - 105506000.0 joules
-   • kilowatt-hour [kWh] - 3600000.0 joules
+   • joule [J], kilojoule [kJ], British Thermal Unit [BTU], therm [thm], kilowatt-hour [kWh]
 
 8. Density
-   • kilogram per cubic meter [kg/m³] - Base SI unit for density
-   • gram per cubic centimeter [g/cm³] - 1000.0 kg/m³
-   • pound per cubic foot [lb/ft³] - 16.0185 kg/m³
-   • pound per gallon [lb/gal] - 119.8264 kg/m³
-   • API gravity [°API] - Special oil industry measure
-   • specific gravity [SG] - Ratio relative to water density
-   • pound per barrel [lb/bbl] - Oil industry measure");
+   • kilogram per cubic meter [kg/m³], gram per cubic centimeter [g/cm³], pound per cubic foot [lb/ft³], pound per gallon [lb/gal], API gravity [°API], specific gravity [SG], pound per barrel [lb/bbl]
+
+9. Time
+   • second [s], minute [min], hour [h], day [d]
+
+10. Force
+   • newton [N], kilonewton [kN], dyne [dyn], kilogram-force [kgf], pound-force [lbf]
+
+11. Speed
+   • meter per second [m/s], kilometer per hour [km/h], mile per hour [mph], foot per second [ft/s], knot [kn]
+
+12. Flow Rate
+   • cubic meter per second [m³/s], liter per second [L/s], liter per minute [L/min], gallon per minute [gal/min], barrel per day [bbl/d]
+
+13. Dynamic Viscosity
+   • pascal second [Pa·s], poise [P], centipoise [cP], pound per foot per second [lb/(ft·s)]
+
+14. Kinematic Viscosity
+   • square meter per second [m²/s], stokes [St], centistokes [cSt]
+
+15. Power
+   • watt [W], kilowatt [kW], megawatt [MW], horsepower [hp], BTU per hour [BTU/h]
+
+16. Torque
+   • newton meter [N·m], kilogram-force meter [kgf·m], pound-force foot [lbf·ft], pound-force inch [lbf·in]");
 
             // Special Conversions Tab
             TabPage specialTab = CreateHelpTab("Special Conversions", @"Special Conversion Handling

@@ -27,6 +27,13 @@ namespace RowHighligher
 
         private static readonly List<UnitCategory> Categories = UnitConverter.GetOilGasCategories();
 
+        private Panel customTitleBar;
+        private Label titleLabel;
+        private Button closeButton;
+        private Button minimizeButton;
+        private Point dragOffset;
+        private bool dragging = false;
+
         public UnitsConverterForm()
         {
             InitializeComponent();
@@ -42,14 +49,14 @@ namespace RowHighligher
             this.Size = new Size(500, 330);
             
             // Allow resizing
-            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.FormBorderStyle = FormBorderStyle.None;
             
             // Set the current size as the minimum size
             this.MinimumSize = new Size(600, 330);
             
             // Allow minimizing and maximizing
-            this.MaximizeBox = true;
-            this.MinimizeBox = true;
+            // this.MaximizeBox = true;
+            // this.MinimizeBox = true;
             
             this.StartPosition = FormStartPosition.CenterParent;
             this.TopMost = true;
@@ -57,6 +64,60 @@ namespace RowHighligher
             // Prepare categories
             categoryNames = new string[Categories.Count];
             for (int i = 0; i < Categories.Count; i++) categoryNames[i] = Categories[i].Name;
+
+            // Custom title bar
+            customTitleBar = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Height = 36,
+                BackColor = Color.Orange
+            };
+            titleLabel = new Label
+            {
+                Text = "Units Converter",
+                Dock = DockStyle.Left,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.Black,
+                Padding = new Padding(10, 0, 0, 0),
+                Width = 220
+            };
+            closeButton = new Button
+            {
+                Text = "✕",
+                Dock = DockStyle.Right,
+                Width = 36,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Orange,
+                ForeColor = Color.Black,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                TabStop = false
+            };
+            closeButton.FlatAppearance.BorderSize = 0;
+            closeButton.Click += (s, e) => this.Close();
+            minimizeButton = new Button
+            {
+                Text = "_",
+                Dock = DockStyle.Right,
+                Width = 36,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Orange,
+                ForeColor = Color.Black,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                TabStop = false
+            };
+            minimizeButton.FlatAppearance.BorderSize = 0;
+            minimizeButton.Click += (s, e) => this.WindowState = FormWindowState.Minimized;
+            customTitleBar.Controls.Add(closeButton);
+            customTitleBar.Controls.Add(minimizeButton);
+            customTitleBar.Controls.Add(titleLabel);
+            customTitleBar.MouseDown += CustomTitleBar_MouseDown;
+            customTitleBar.MouseMove += CustomTitleBar_MouseMove;
+            customTitleBar.MouseUp += CustomTitleBar_MouseUp;
+            titleLabel.MouseDown += CustomTitleBar_MouseDown;
+            titleLabel.MouseMove += CustomTitleBar_MouseMove;
+            titleLabel.MouseUp += CustomTitleBar_MouseUp;
 
             // Main layout: 1 column (controls)
             var mainPanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 1, ColumnCount = 1, Padding = new Padding(10) };
@@ -100,6 +161,7 @@ namespace RowHighligher
             // Input row
             inputLabel = new Label { Text = "Input Value:", Anchor = AnchorStyles.Right, AutoSize = true, Font = smallFontNormal };
             inputTextBox = new TextBox { Dock = DockStyle.Fill, Font = smallFontNormal };
+            inputTextBox.KeyDown += InputTextBox_KeyDown;
             fromUnitComboBox = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Font = smallFontNormal };
             controlsPanel.Controls.Add(inputLabel, 0, 1);
             controlsPanel.Controls.Add(inputTextBox, 1, 1);
@@ -144,7 +206,59 @@ namespace RowHighligher
             controlsPanel.Controls.Add(helpButton, 0, 5);
 
             mainPanel.Controls.Add(controlsPanel, 0, 0);
-            this.Controls.Add(mainPanel);
+
+            // Root layout: 2 rows, title bar and mainPanel
+            var rootPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 2,
+                ColumnCount = 1
+            };
+            rootPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Title bar height
+            rootPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Main UI
+            rootPanel.Controls.Add(customTitleBar, 0, 0);
+            rootPanel.Controls.Add(mainPanel, 0, 1);
+            this.Controls.Clear();
+            this.Controls.Add(rootPanel);
+        }
+
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            customTitleBar.BackColor = Color.Orange;
+            closeButton.BackColor = Color.Orange;
+            minimizeButton.BackColor = Color.Orange;
+        }
+
+        protected override void OnDeactivate(EventArgs e)
+        {
+            base.OnDeactivate(e);
+            customTitleBar.BackColor = Color.FromArgb(255, 230, 180); // Lighter orange when inactive
+            closeButton.BackColor = Color.FromArgb(255, 230, 180);
+            minimizeButton.BackColor = Color.FromArgb(255, 230, 180);
+        }
+
+        private void CustomTitleBar_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                dragging = true;
+                dragOffset = new Point(e.X, e.Y);
+            }
+        }
+
+        private void CustomTitleBar_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (dragging)
+            {
+                Point p = PointToScreen(e.Location);
+                this.Location = new Point(p.X - dragOffset.X, p.Y - dragOffset.Y);
+            }
+        }
+
+        private void CustomTitleBar_MouseUp(object sender, MouseEventArgs e)
+        {
+            dragging = false;
         }
 
         private void HelpButton_Click(object sender, EventArgs e)
@@ -248,21 +362,11 @@ namespace RowHighligher
             if (fromUnit == null || toUnit == null)
                 return;
             
-            // Swap the units
+            // Swap the units only
             int fromIndex = fromUnitComboBox.SelectedIndex;
             int toIndex = toUnitComboBox.SelectedIndex;
-            
             fromUnitComboBox.SelectedIndex = toIndex;
             toUnitComboBox.SelectedIndex = fromIndex;
-            
-            // If there's a value in the result, move it to the input
-            if (!string.IsNullOrEmpty(resultTextBox.Text))
-            {
-                inputTextBox.Text = resultTextBox.Text;
-                
-                // Now perform the conversion with the swapped units
-                PerformConversion();
-            }
         }
 
         // Extract the conversion logic into its own method so it can be reused
@@ -293,6 +397,16 @@ namespace RowHighligher
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Conversion Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void InputTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                ConvertButton_Click(convertButton, EventArgs.Empty);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
             }
         }
     }
@@ -441,6 +555,132 @@ namespace RowHighligher
                         {"API gravity", "°API"},
                         {"specific gravity", "SG"},
                         {"pound per barrel", "lb/bbl"}
+                    }),
+                new UnitCategory("Time",
+                    new Dictionary<string, double>
+                    {
+                        {"second", 1.0},
+                        {"minute", 60.0},
+                        {"hour", 3600.0},
+                        {"day", 86400.0}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"second", "s"},
+                        {"minute", "min"},
+                        {"hour", "h"},
+                        {"day", "d"}
+                    }),
+                new UnitCategory("Force",
+                    new Dictionary<string, double>
+                    {
+                        {"newton", 1.0},
+                        {"kilonewton", 1000.0},
+                        {"dyne", 1e-5},
+                        {"kilogram-force", 9.80665},
+                        {"pound-force", 4.4482216}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"newton", "N"},
+                        {"kilonewton", "kN"},
+                        {"dyne", "dyn"},
+                        {"kilogram-force", "kgf"},
+                        {"pound-force", "lbf"}
+                    }),
+                new UnitCategory("Speed",
+                    new Dictionary<string, double>
+                    {
+                        {"meter per second", 1.0},
+                        {"kilometer per hour", 0.277777778},
+                        {"mile per hour", 0.44704},
+                        {"foot per second", 0.3048},
+                        {"knot", 0.514444}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"meter per second", "m/s"},
+                        {"kilometer per hour", "km/h"},
+                        {"mile per hour", "mph"},
+                        {"foot per second", "ft/s"},
+                        {"knot", "kn"}
+                    }),
+                new UnitCategory("Flow Rate",
+                    new Dictionary<string, double>
+                    {
+                        {"cubic meter per second", 1.0},
+                        {"liter per second", 0.001},
+                        {"liter per minute", 0.001/60.0},
+                        {"gallon per minute", 0.00378541/60.0},
+                        {"barrel per day", 0.158987/86400.0}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"cubic meter per second", "m³/s"},
+                        {"liter per second", "L/s"},
+                        {"liter per minute", "L/min"},
+                        {"gallon per minute", "gal/min"},
+                        {"barrel per day", "bbl/d"}
+                    }),
+                new UnitCategory("Dynamic Viscosity",
+                    new Dictionary<string, double>
+                    {
+                        {"pascal second", 1.0},
+                        {"poise", 0.1},
+                        {"centipoise", 0.001},
+                        {"pound per foot per second", 1.48816}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"pascal second", "Pa·s"},
+                        {"poise", "P"},
+                        {"centipoise", "cP"},
+                        {"pound per foot per second", "lb/(ft·s)"}
+                    }),
+                new UnitCategory("Kinematic Viscosity",
+                    new Dictionary<string, double>
+                    {
+                        {"square meter per second", 1.0},
+                        {"stokes", 0.0001},
+                        {"centistokes", 0.000001}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"square meter per second", "m²/s"},
+                        {"stokes", "St"},
+                        {"centistokes", "cSt"}
+                    }),
+                new UnitCategory("Power",
+                    new Dictionary<string, double>
+                    {
+                        {"watt", 1.0},
+                        {"kilowatt", 1000.0},
+                        {"megawatt", 1000000.0},
+                        {"horsepower", 745.699872},
+                        {"BTU per hour", 0.29307107}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"watt", "W"},
+                        {"kilowatt", "kW"},
+                        {"megawatt", "MW"},
+                        {"horsepower", "hp"},
+                        {"BTU per hour", "BTU/h"}
+                    }),
+                new UnitCategory("Torque",
+                    new Dictionary<string, double>
+                    {
+                        {"newton meter", 1.0},
+                        {"kilogram-force meter", 9.80665},
+                        {"pound-force foot", 1.355817948},
+                        {"pound-force inch", 0.112984829}
+                    },
+                    new Dictionary<string, string>
+                    {
+                        {"newton meter", "N·m"},
+                        {"kilogram-force meter", "kgf·m"},
+                        {"pound-force foot", "lbf·ft"},
+                        {"pound-force inch", "lbf·in"}
                     })
             };
         }
