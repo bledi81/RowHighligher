@@ -246,16 +246,16 @@ namespace RowHighligher
                 buttonsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, i == 4 ? 28 : 18)); // Logo column bigger
             }
 
-            // Add help button
-            helpButton = new Button
+            // Add Get button in the previous location of Help button
+            Button getButton = new Button
             {
-                Text = "Help (F1)",
+                Text = "Get",
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 8f, FontStyle.Regular),
                 Margin = new Padding(1)
             };
-            helpButton.Click += HelpButton_Click;
-            buttonsPanel.Controls.Add(helpButton, 0, 0);
+            getButton.Click += GetButton_Click;
+            buttonsPanel.Controls.Add(getButton, 0, 0);
 
             insertButton = new Button
             {
@@ -307,13 +307,14 @@ namespace RowHighligher
             TableLayoutPanel parenthesesPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 4, // Changed from 2 to 4
+                ColumnCount = 5, // Changed from 4 to 5 to accommodate Help button
                 RowCount = 1
             };
-            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+            parenthesesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
 
             Button leftBracketButton = new Button
             {
@@ -347,6 +348,17 @@ namespace RowHighligher
             Button clearEntryButton = new Button { Text = "CE", Dock = DockStyle.Fill, Tag = "clearEntry" };
             clearEntryButton.Click += ClearEntryButton_Click;
             parenthesesPanel.Controls.Add(clearEntryButton, 3, 0);
+            
+            // Move help button to the right of CE button
+            helpButton = new Button
+            {
+                Text = "Help (F1)",
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 8f, FontStyle.Regular),
+                Margin = new Padding(1)
+            };
+            helpButton.Click += HelpButton_Click;
+            parenthesesPanel.Controls.Add(helpButton, 4, 0);
 
             // Add the parentheses panel to the main panel
             mainPanel.Controls.Add(parenthesesPanel, 0, 3); // Moved from 0,2 to 0,3
@@ -1735,6 +1747,73 @@ namespace RowHighligher
             catch (Exception ex)
             {
                 MessageBox.Show($"Error inserting value: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void GetButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                Excel.Application excelApp = Globals.ThisAddIn.Application;
+                if (excelApp != null)
+                {
+                    Excel.Range activeCell = excelApp.ActiveCell;
+                    if (activeCell != null)
+                    {
+                        // Get the value from the active cell
+                        object cellValue = activeCell.Value;
+                        if (cellValue != null)
+                        {
+                            double numericValue;
+                            
+                            // Special handling for date/time values
+                            if (cellValue is DateTime dateTimeValue)
+                            {
+                                // Convert DateTime to Excel's numeric representation (days since 1/1/1900)
+                                numericValue = dateTimeValue.ToOADate();
+                            }
+                            // Try to parse any string representation into a number
+                            else if (!double.TryParse(cellValue.ToString(), out numericValue))
+                            {
+                                // For non-numeric values, try to parse as DateTime
+                                DateTime parsedDateTime;
+                                if (DateTime.TryParse(cellValue.ToString(), out parsedDateTime))
+                                {
+                                    numericValue = parsedDateTime.ToOADate();
+                                }
+                                else
+                                {
+                                    MessageBox.Show("The selected cell doesn't contain a value that can be converted to a number.", 
+                                                  "Non-numeric Value", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    return;
+                                }
+                            }
+
+                            // If we're adding to an existing expression
+                            if (!isNewCalculation && !string.IsNullOrEmpty(expressionDisplayTextBox.Text)) 
+                            {
+                                // Append the value to the current expression
+                                expressionDisplayTextBox.Text += numericValue.ToString(CultureInfo.InvariantCulture);
+                            }
+                            // If we're starting a new calculation
+                            else
+                            {
+                                // Just set the value directly
+                                expressionDisplayTextBox.Text = numericValue.ToString(CultureInfo.InvariantCulture);
+                                resultDisplayTextBox.Text = numericValue.ToString(CultureInfo.InvariantCulture);
+                                isNewCalculation = false; // Don't reset - continue using this value
+                            }
+
+                            // Always set cursor to the end
+                            SetCursorToEnd();
+                        }
+                        Marshal.ReleaseComObject(activeCell);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error getting cell value: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
