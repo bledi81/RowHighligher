@@ -46,6 +46,7 @@ Main Features:
 • Swap units with a single click (swaps only the units, not the values)
 • Automatic unit categorization
 • Symbol display for easy reference
+• Custom draggable window with minimize function
 
 Key Benefits:
 • Simplify complex unit conversions
@@ -54,6 +55,7 @@ Key Benefits:
 • Standardize units across your worksheets
 • Seamless Excel integration
 • Always accessible from the ribbon
+• Stays on top of other windows when needed
 
 Getting Started:
 • Select a category from the dropdown menu
@@ -89,11 +91,17 @@ Step-by-Step Guide:
    • View the converted value in the result field
    • Click 'Insert Result' to place the value in the active Excel cell
 
+6. Window Controls:
+   • Move window: Drag the orange title bar
+   • Minimize: Click '_' button in top right corner
+   • Close: Click 'x' button in top right corner
+   • The window stays on top by default for easy access
+
 Tips:
    • Use the '↑↓ Swap Units' button to reverse the conversion direction (swaps only the units)
    • The converter remembers your last category selection
    • Units are organized by industry-standard categories
-   • You can detach the converter window to keep it visible while working");
+   • Press Enter key to quickly convert after typing a value");
 
             // Unit Categories Tab
             TabPage categoriesTab = CreateHelpTab("Unit Categories", @"Available Unit Categories
@@ -185,20 +193,28 @@ Notes:
 Excel Integration:
 • Place your cursor in an Excel cell before clicking ""Get value from cell"" to import that value
 • The ""Insert Result"" button sends the converted value to the current active cell
-• You can detach the converter window to keep it visible while you work
+• The converter window stays on top by default for easier use with Excel
+• Converter results are formatted for precision (scientific notation when appropriate)
+
+Interface Features:
+• The orange title bar changes to a lighter color when not active
+• You can drag the converter window by holding the title bar
+• Click the 'x' to close or '_' to minimize the window
+• The window size is optimized for easy use but maintains a minimum size
+
+Swap Units Function:
+• The ""↑↓ Swap Units"" button quickly reverses your conversion direction
+• It exchanges the From and To units without changing the input value
+• This is useful for:
+  - Converting back and forth between units
+  - Comparing different unit representations
+  - Creating conversion tables in Excel
 
 Efficiency Tips:
-• Use the ""↑↓ Swap Units"" button to quickly reverse your conversion direction
-  - This also moves the previous result to the input field
-  - Useful for multiple conversions in a sequence
-
 • The converter remembers the last category you selected between uses
-
 • Each category has a default ""from"" and ""to"" unit selection
-  - First unit is selected as ""from""
-  - Second unit is selected as ""to""
-
 • All unit options show both the name and symbol for easy reference
+• Press Enter after typing a value to convert instantly
 
 Error Handling:
 • Invalid number inputs will show an error message
@@ -268,7 +284,7 @@ Advanced Usage:
             };
 
             // Use the RTF parser to properly handle special characters
-            textBox.Text = content.Replace("•", "•"); // Ensure bullet points are consistent
+            textBox.Text = content;
 
             return textBox;
         }

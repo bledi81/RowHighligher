@@ -38,6 +38,7 @@ namespace RowHighligher
 General Settings:
 • Access settings via the Settings button
 • Settings window provides configuration options
+• Settings persist across Excel sessions
 
 Decimal Places:
 • Range: 0-10 decimal places
@@ -57,10 +58,15 @@ Tips:
 • Higher precision available for scientific calculations
 • Settings window stays on top for easy access
 • Click Save to apply changes
-• Changes affect both display and calculations");
+• Changes affect both display and calculations
+• Complex numbers are formatted according to decimal places setting");
 
             // Basic Operations Tab (Updated)
             TabPage basicTab = CreateHelpTab("Basic Operations", @"Basic Operations
+
+Display System:
+• Blue display: Expression (input)
+• Green display: Calculation result
 
 Numbers and Basic Math:
 • Numbers (0-9): Click buttons or type directly
@@ -71,11 +77,10 @@ Numbers and Basic Math:
   × Multiplication Example: 4 × 3 = 12
   ÷ Division       Example: 10 ÷ 2 = 5
 
-Settings Control:
-• Click Settings button to open configuration
-• Set decimal places (0-10)
-• Settings window always visible
-• Changes apply immediately
+Input Methods:
+• Use keyboard for direct entry
+• Use on-screen buttons
+• Get values from Excel with Get button
 
 Memory Functions:
 • MC: Memory Clear - Erases stored value
@@ -89,6 +94,7 @@ Clear Functions:
 • LastAns: Recalls last calculation result
 
 Excel Integration:
+• Get: Gets value from current Excel cell
 • Insert (Ctrl+Enter): Sends result to Excel
 • Detachable window mode
 • Always-on-top option when detached");
@@ -109,6 +115,7 @@ Mathematical Functions:
 • sqrt(x): Square root
   Example: sqrt(16) = 4.0000
   Example: sqrt(2) ? 1.4142
+  Note: sqrt(-1) returns complex number i
 
 • x^y: Power function
   Example: 2^3 = 8.0000
@@ -117,11 +124,16 @@ Mathematical Functions:
 • 1/x: Reciprocal
   Example: 1/2 = 0.5000
 
-Trigonometric Functions (in radians):
+Trigonometric Functions:
 • sin(x): Sine function
 • cos(x): Cosine function
 • tan(x): Tangent function
-• RAD/DEG: Convert angles
+
+Angle Modes:
+• RAD: Radians mode (default)
+• DEG: Degrees mode
+• ? RAD: Convert degrees to radians
+• ? DEG: Convert radians to degrees
   Example: 90° ? RAD = ?/2
   Example: ? ? DEG = 180°
 
@@ -134,8 +146,13 @@ Logarithmic Functions:
   Example: ln(e) = 1.0000
   Note: x must be positive");
 
-            // Expression Mode Tab (Unchanged)
+            // Expression Mode Tab (Updated)
             TabPage expressionTab = CreateHelpTab("Expression Mode", @"Expression Mode & Syntax
+
+Color-Coded Parentheses:
+• Matching parentheses are colored the same
+• Unmatched parentheses appear in red
+• Visual indicator of expression structure
 
 Parentheses Usage:
 • Use ( ) for grouping operations
@@ -160,6 +177,12 @@ Order of Operations:
 4. Multiplication and Division (×, ÷)
 5. Addition and Subtraction (+, -)
 
+Complex Number Support:
+• Automatically handles complex numbers when needed
+  Example: sqrt(-4) = 0 + 2i
+• Properly calculates with complex intermediates
+• Formats complex results with the correct precision
+
 Expression Building Features:
 • Real-time function name recognition
 • Auto-completion for functions
@@ -172,19 +195,19 @@ Expression Building Features:
 
 Keyboard Mode:
 • Blue display indicates keyboard mode
-• Direct function typing:
+• Direct function typing with auto-completion:
   - Type 'sqrt' for square root
   - Type 'sin' for sine
   - Type 'cos' for cosine
   - Type 'tan' for tangent
-  - Type 'log' for logarithm
-  - Type 'ln' for natural log
+  - Type 'log' for logarithm (base 10)
+  - Type 'ln' for natural logarithm
   - Type 'pi' for ?
   - Type 'e' for e
 
 Special Keys:
 • F1: Open this help window
-• Ctrl+Enter: Insert to Excel
+• Ctrl+Enter: Insert result to Excel
 • ESC: Clear calculator
 • Backspace: Delete last character
 • Enter or =: Calculate result
@@ -197,6 +220,11 @@ Mouse Input:
 • Click LastAns for previous result
 • Click Settings to configure
 
+Excel Integration:
+• Get: Import value from current Excel cell
+• Insert: Send result to current Excel cell
+• Clipboard-friendly operations
+
 Tips:
 • Watch the color of the display
 • Use parentheses for complex expressions
@@ -207,7 +235,7 @@ Tips:
 
             // Add tabs in order
             tabControl.TabPages.AddRange(new TabPage[] { 
-                settingsTab,    // New settings tab first
+                settingsTab,
                 basicTab, 
                 scientificTab, 
                 expressionTab,
@@ -254,8 +282,15 @@ Tips:
                 ReadOnly = true,
                 BackColor = SystemColors.Window,
                 Font = new Font("Segoe UI", 10),
-                Text = content
+                Multiline = true,
+                AcceptsTab = true,
+                WordWrap = true,
+                ScrollBars = RichTextBoxScrollBars.Vertical,
+                DetectUrls = false // Prevent automatic URL detection which can affect formatting
             };
+
+            // Use the RTF parser to properly handle special characters
+            textBox.Text = content;
 
             return textBox;
         }
