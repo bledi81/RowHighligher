@@ -58,9 +58,8 @@ namespace RowHighligher
             // this.MaximizeBox = true;
             // this.MinimizeBox = true;
             
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.TopMost = true;
-
+            this.StartPosition = FormStartPosition.CenterScreen; // Changed to CenterScreen for consistency
+            
             // Prepare categories
             categoryNames = new string[Categories.Count];
             for (int i = 0; i < Categories.Count; i++) categoryNames[i] = Categories[i].Name;

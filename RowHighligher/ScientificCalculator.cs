@@ -26,8 +26,8 @@ namespace RowHighligher
         private Button clearButton;
         private Button helpButton;  // Add help button field
         private Button settingsButton; // Add settings button field
-        private Button[] numberButtons;
-        private Button[] operatorButtons;
+        private Button[] numberButtons = new Button[10]; // Initialize the array for digits 0-9
+        private Button[] operatorButtons = new Button[6]; // Initialize array for operators +, -, *, /, =, .
         private Button[] scientificButtons;
         private double memory = 0;
         private bool isNewCalculation = true;
@@ -61,6 +61,10 @@ namespace RowHighligher
         private Button minimizeButton;
         private Point dragOffset;
         private bool dragging = false;
+
+        // Add this near the top of your class with the other fields
+        private TableLayoutPanel mainPanel;
+        private TableLayoutPanel numberPanel;
 
         public ScientificCalculator()
         {
@@ -96,26 +100,23 @@ namespace RowHighligher
         private void FormatDisplayText()
         {
             string text = expressionDisplayTextBox.Text;
-            
+            // Replace sqrt with √
+            text = text.Replace("sqrt", "√");
             // Apply operator formatting regardless of mode
             text = text.Replace("*", " × ")
                        .Replace("/", " ÷ ");
-            
             // Only format +/- if not in expression mode or no parentheses
             if (!isExpressionMode || (!text.Contains("(") && !text.Contains(")")))
             {
                 text = text.Replace("+", " + ")
                           .Replace("-", " - ");
             }
-            
             // Clean up spaces
             while (text.Contains("  "))
             {
                 text = text.Replace("  ", " ");
             }
-            
             expressionDisplayTextBox.Text = text.Trim();
-            
             // Always move cursor to end after formatting
             SetCursorToEnd();
         }
@@ -177,7 +178,7 @@ namespace RowHighligher
             titleLabel.MouseUp += CustomTitleBar_MouseUp;
 
             // Main layout panel
-            TableLayoutPanel mainPanel = new TableLayoutPanel
+            mainPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 RowCount = 7,         // Increased to 7 rows to accommodate separate result display
@@ -419,6 +420,13 @@ namespace RowHighligher
                     buttonText = "→ DEG";
                     buttonTag = "rad_to_deg";
                 }
+                // Use proper symbol for sqrt
+                else if (buttonText == "sqrt")
+                {
+                    buttonText = "√";
+                    buttonTag = "sqrt";
+                }
+                // Use proper symbol for 1/x (optional, keep as is)
 
                 scientificButtons[i] = new Button
                 {
@@ -439,11 +447,12 @@ namespace RowHighligher
             UpdateAngleModeButtonsDisplay();
 
             // Number buttons panel for rows 3, 4, 5
-            TableLayoutPanel numberPanel = new TableLayoutPanel
+            numberPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 4,
                 RowCount = 4,
+                // Rest of the initialization remains unchanged
                 RowStyles = {
                     new RowStyle(SizeType.Percent, 25),
                     new RowStyle(SizeType.Percent, 25),
@@ -472,10 +481,7 @@ namespace RowHighligher
                 numberPanel.Controls.Add(memButtons[i], i, 0);
             }
 
-            // Number buttons 7-9 and /
-            numberButtons = new Button[10]; // Digits 0-9
-            operatorButtons = new Button[8]; // +, -, *, /, =, ., +/-, ?
-
+            // Number buttons 7-9 and ÷
             for (int i = 7; i <= 9; i++)
             {
                 int col = i - 7;
@@ -489,11 +495,11 @@ namespace RowHighligher
                 numberPanel.Controls.Add(numberButtons[i], col, 1);
             }
 
-            operatorButtons[0] = new Button { Text = "/", Dock = DockStyle.Fill, Tag = "/", BackColor = Color.LightGoldenrodYellow };
+            operatorButtons[0] = new Button { Text = "÷", Dock = DockStyle.Fill, Tag = "/", BackColor = Color.LightGoldenrodYellow };
             operatorButtons[0].Click += OperatorButton_Click;
             numberPanel.Controls.Add(operatorButtons[0], 3, 1);
 
-            // Number buttons 4-6 and *
+            // Number buttons 4-6 and ×
             for (int i = 4; i <= 6; i++)
             {
                 int col = i - 4;
@@ -507,7 +513,7 @@ namespace RowHighligher
                 numberPanel.Controls.Add(numberButtons[i], col, 2);
             }
 
-            operatorButtons[1] = new Button { Text = "*", Dock = DockStyle.Fill, Tag = "*", BackColor = Color.LightGoldenrodYellow };
+            operatorButtons[1] = new Button { Text = "×", Dock = DockStyle.Fill, Tag = "*", BackColor = Color.LightGoldenrodYellow };
             operatorButtons[1].Click += OperatorButton_Click;
             numberPanel.Controls.Add(operatorButtons[1], 3, 2);
 
@@ -771,8 +777,14 @@ namespace RowHighligher
                     
                     // Remove the function characters and add the function with parenthesis
                     string currentTextOuter = expressionDisplayTextBox.Text;
-                    expressionDisplayTextBox.Text = currentTextOuter.Substring(0, currentTextOuter.Length - charsToCut) + 
-                                          functionName + "(";
+                    if (functionName == "sqrt")
+                    {
+                        expressionDisplayTextBox.Text = currentTextOuter.Substring(0, currentTextOuter.Length - charsToCut) + "√(";
+                    }
+                    else
+                    {
+                        expressionDisplayTextBox.Text = currentTextOuter.Substring(0, currentTextOuter.Length - charsToCut) + functionName + "(";
+                    }
                     
                     // Reset buffer since we've processed this function
                     keyBuffer = "";
@@ -875,6 +887,13 @@ namespace RowHighligher
                 SetCursorToEnd();
                 e.Handled = true;
             }
+
+            // Always show math symbols in the display
+            expressionDisplayTextBox.Text = expressionDisplayTextBox.Text
+                .Replace("sqrt", "√")
+                .Replace("*", "×")
+                .Replace("/", "÷");
+            SetCursorToEnd();
         }
 
         private void DisplayTextBox_GotFocus(object sender, EventArgs e)
@@ -902,10 +921,13 @@ namespace RowHighligher
                 expressionDisplayTextBox.Text = ""; // Clear expression display for new calculation
                 resultDisplayTextBox.Text = "0";    // Reset result display
                 // For starting a new calculation
-                if (value == "sqrt" || value == "sin" || value == "cos" || value == "tan" || value == "log" || value == "ln")
+                if (value == "sqrt" || value == "√" || value == "sin" || value == "cos" || value == "tan" || value == "log" || value == "ln")
                 {
                     // For functions, show the function name followed by opening parenthesis
-                    expressionDisplayTextBox.Text = value + "(";
+                    if (value == "sqrt" || value == "√")
+                        expressionDisplayTextBox.Text = "√(";
+                    else
+                        expressionDisplayTextBox.Text = value + "(";
                     isExpressionMode = true;
                     bracketCount++; // Important: increment bracket count when adding function parenthesis
                 }
@@ -937,17 +959,14 @@ namespace RowHighligher
             else
             {
                 // For continuing an expression
-                if (value == "sqrt" || value == "sin" || value == "cos" || value == "tan" || value == "log" || value == "ln")
+                if (value == "sqrt" || value == "√" || value == "sin" || value == "cos" || value == "tan" || value == "log" || value == "ln")
                 {
-                    expressionDisplayTextBox.Text += value + "(";
+                    if (value == "sqrt" || value == "√")
+                        expressionDisplayTextBox.Text += "√(";
+                    else
+                        expressionDisplayTextBox.Text += value + "(";
                     isExpressionMode = true;
                     bracketCount++; // Important: increment bracket count when adding function parenthesis
-                }
-                else if (value == "(")
-                {
-                    expressionDisplayTextBox.Text += value;
-                    bracketCount++;
-                    isExpressionMode = true; // Important: set expression mode when opening parenthesis
                 }
                 else if (string.IsNullOrEmpty(expressionDisplayTextBox.Text) && value != ".") // Was displayTextBox.Text == "0"
                 {
@@ -1094,8 +1113,9 @@ namespace RowHighligher
                 isExpressionMode = false;
                 bracketCount = 0;
 
-                // Evaluate expression
-                object resultObject = ExpressionEvaluator.Evaluate(expressionDisplayTextBox.Text, decimalPlaces, isRadiansMode);
+                // Replace all Unicode square root symbols with "sqrt"
+                string evalExpr = expressionDisplayTextBox.Text.Replace("√", "sqrt");
+                object resultObject = ExpressionEvaluator.Evaluate(evalExpr, decimalPlaces, isRadiansMode);
                 lastAnswer = resultObject;
 
                 if (resultObject is Complex complexResult)
@@ -1178,7 +1198,8 @@ namespace RowHighligher
             // Replace symbolic constants with their values before evaluation
             expression = expression.Replace("π", PI.ToString(CultureInfo.InvariantCulture));
             expression = expression.Replace("e", E.ToString(CultureInfo.InvariantCulture));
-
+            // Replace √ with sqrt for evaluation
+            expression = expression.Replace("√", "sqrt");
             // Rest of the method remains the same...
             while (expression.Contains("^"))
             {
@@ -1577,17 +1598,23 @@ namespace RowHighligher
             }
 
             // Handle functions that require parentheses
-            if (operation == "sqrt" || operation == "sin" || operation == "cos" || 
+            if (operation == "sqrt" || operation == "√" || operation == "sin" || operation == "cos" || 
                 operation == "tan" || operation == "log" || operation == "ln")
             {
                 // Start or continue an expression with this function
                 if (isNewCalculation || string.IsNullOrEmpty(expressionDisplayTextBox.Text)) // was displayTextBox.Text == "0"
                 {
-                    expressionDisplayTextBox.Text = operation + "(";
+                    if (operation == "sqrt" || operation == "√")
+                        expressionDisplayTextBox.Text = "√(";
+                    else
+                        expressionDisplayTextBox.Text = operation + "(";
                 }
                 else
                 {
-                    expressionDisplayTextBox.Text += operation + "(";
+                    if (operation == "sqrt" || operation == "√")
+                        expressionDisplayTextBox.Text += "√(";
+                    else
+                        expressionDisplayTextBox.Text += operation + "(";
                 }
 
                 isExpressionMode = true;
@@ -2023,6 +2050,100 @@ namespace RowHighligher
         {
             dragging = false;
         }
+
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            // Update title bar colors
+            customTitleBar.BackColor = Color.LightSkyBlue;
+            closeButton.BackColor = Color.LightSkyBlue;
+            minimizeButton.BackColor = Color.LightSkyBlue;
+            
+            // Set main panel background
+            mainPanel.BackColor = Color.DarkGray;
+            
+            // Number buttons
+            foreach (Button btn in numberButtons)
+            {
+                if (btn != null)
+                    btn.BackColor = SystemColors.Control;
+            }
+            
+            // Memory buttons - access them directly from the numberPanel
+            for (int i = 0; i < 4; i++) // Memory buttons are in the first row (0) and columns 0-3
+            {
+                Control control = numberPanel.GetControlFromPosition(i, 0);
+                if (control is Button btn)
+                {
+                    btn.BackColor = SystemColors.Control;
+                }
+            }
+            
+            // Parentheses panel buttons
+            foreach (Control control in mainPanel.Controls)
+            {
+                if (control is TableLayoutPanel panel && panel != numberPanel)
+                {
+                    foreach (Control panelControl in panel.Controls)
+                    {
+                        if (panelControl is Button btn)
+                        {
+                            // Special handling for parentheses and other buttons
+                            if (btn == helpButton || btn.Tag?.ToString() == "(" || 
+                                btn.Tag?.ToString() == ")" || btn.Tag?.ToString() == "backspace" ||
+                                btn.Tag?.ToString() == "clearEntry")
+                            {
+                                btn.BackColor = SystemColors.Control;
+                            }
+                            // Top row buttons (Get, Insert, LastAns, Settings)
+                            else if (btn == insertButton || btn == clearButton || btn == settingsButton || 
+                                     btn.Text == "Get")
+                            {
+                                btn.BackColor = SystemColors.Control;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Operator buttons with special colors
+            for (int i = 0; i < operatorButtons.Length; i++)
+            {
+                if (operatorButtons[i] != null)
+                {
+                    if (i == 4) // Equals button
+                        operatorButtons[i].BackColor = Color.Orange;
+                    else if (i == 0 || i == 1 || i == 2 || i == 5) // +, -, *, / buttons
+                        operatorButtons[i].BackColor = Color.LightGoldenrodYellow;
+                    else // Other operator buttons (like decimal point)
+                        operatorButtons[i].BackColor = SystemColors.Control;
+                }
+            }
+            
+            // Ensure scientific panel keeps its background
+            foreach (Button btn in scientificButtons)
+            {
+                if (btn != null)
+                    btn.BackColor = SystemColors.Control;
+            }
+            
+            // Handle angle mode buttons
+            UpdateAngleModeButtonsDisplay();
+        }
+
+        protected override void OnDeactivate(EventArgs e)
+        {
+            base.OnDeactivate(e);
+            // Update title bar colors
+            customTitleBar.BackColor = Color.FromArgb(210, 230, 250);
+            closeButton.BackColor = Color.FromArgb(210, 230, 250);
+            minimizeButton.BackColor = Color.FromArgb(210, 230, 250);
+            
+            // Reset main panel background
+            mainPanel.BackColor = SystemColors.Control;
+            
+            // The buttons will keep their explicitly set colors from OnActivated
+        }
     }
 
     // Custom exception for evaluation errors if needed
@@ -2079,7 +2200,7 @@ namespace RowHighligher
             decimalPlacesInput = new NumericUpDown
             {
                 Minimum = 0,
-                Maximum = 10,
+                Maximum = 15,
                 // Value = Properties.Settings.Default.CalculatorDecimalPlaces, // Set by DecimalPlaces property
                 Width = 60
             };

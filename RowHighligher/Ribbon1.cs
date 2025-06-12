@@ -15,8 +15,10 @@ namespace RowHighligher
     public class Ribbon1 : Office.IRibbonExtensibility
     {
         private Office.IRibbonUI ribbon;
-        private ScientificCalculator calculator;
-        private UnitsConverterForm unitsConverter;
+        // Changed from private to internal to allow access from ThisAddIn
+        internal ScientificCalculator calculator;
+        // Changed from private to internal to allow access from ThisAddIn
+        internal UnitsConverterForm unitsConverter;
 
         public Ribbon1()
         {
