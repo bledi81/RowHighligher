@@ -1,4 +1,4 @@
-using System;
+Ôªøusing System;
 using System.Windows.Forms;
 using System.Drawing;
 
@@ -36,113 +36,122 @@ namespace RowHighligher
             TabPage settingsTab = CreateHelpTab("Settings", @"Calculator Settings
 
 General Settings:
-ï Access settings via the Settings button
-ï Settings window provides configuration options
-ï Settings persist across Excel sessions
+‚Ä¢ Access settings via the Settings button
+‚Ä¢ Settings window provides configuration options
+‚Ä¢ Settings persist across Excel sessions
 
 Decimal Places:
-ï Range: 0-10 decimal places
-ï Default: 4 decimal places
-ï Affects all calculations and displays
-ï Changes take effect immediately
-ï Settings persist during calculator session
+‚Ä¢ Range: 0-10 decimal places
+‚Ä¢ Default: 4 decimal places
+‚Ä¢ Affects all calculations and displays
+‚Ä¢ Changes take effect immediately
+‚Ä¢ Settings persist during calculator session
+
+Complex Number Insertion:
+‚Ä¢ Option: ""Add Complex result as formula""
+‚Ä¢ When checked: Complex results are inserted as Excel formulas
+  Example: ‚àö(-9) becomes =COMPLEX(0, SQRT(9)
+  Allowing Excel to perform further calculations with complex numbers
+‚Ä¢ When unchecked: Complex results are inserted as plain text
+  Example: ‚àö(-9) becomes ""3i""
+
 
 Examples with different decimal places:
-ï 0 places: 1/3 = 0
-ï 2 places: 1/3 = 0.33
-ï 4 places: 1/3 = 0.3333
-ï 6 places: 1/3 = 0.333333
+‚Ä¢ 0 places: 1/3 = 0
+‚Ä¢ 2 places: 1/3 = 0.33
+‚Ä¢ 4 places: 1/3 = 0.3333
+‚Ä¢ 6 places: 1/3 = 0.333333
 
 Tips:
-ï Adjust decimal places based on needed precision
-ï Higher precision available for scientific calculations
-ï Settings window stays on top for easy access
-ï Click Save to apply changes
-ï Changes affect both display and calculations
-ï Complex numbers are formatted according to decimal places setting");
+‚Ä¢ Adjust decimal places based on needed precision
+‚Ä¢ Higher precision available for scientific calculations
+‚Ä¢ Settings window stays on top for easy access
+‚Ä¢ Click Save to apply changes
+‚Ä¢ Changes affect both display and calculations
+‚Ä¢ Complex numbers are formatted according to decimal places setting");
 
             // Basic Operations Tab (Updated)
             TabPage basicTab = CreateHelpTab("Basic Operations", @"Basic Operations
 
 Display System:
-ï Blue display: Expression (input)
-ï Green display: Calculation result
+‚Ä¢ Blue display: Expression (input)
+‚Ä¢ Green display: Calculation result
 
 Numbers and Basic Math:
-ï Numbers (0-9): Click buttons or type directly
-ï Decimal point (.) or (,): For decimal numbers
-ï Basic operators:
+‚Ä¢ Numbers (0-9): Click buttons or type directly
+‚Ä¢ Decimal point (.) or (,): For decimal numbers
+‚Ä¢ Basic operators:
   + Addition       Example: 2 + 2 = 4
   - Subtraction    Example: 5 - 3 = 2
-  ◊ Multiplication Example: 4 ◊ 3 = 12
-  ˜ Division       Example: 10 ˜ 2 = 5
+  √ó Multiplication Example: 4 √ó 3 = 12
+  √∑ Division       Example: 10 √∑ 2 = 5
 
 Input Methods:
-ï Use keyboard for direct entry
-ï Use on-screen buttons
-ï Get values from Excel with Get button
+‚Ä¢ Use keyboard for direct entry
+‚Ä¢ Use on-screen buttons
+‚Ä¢ Get values from Excel with Get button
 
 Memory Functions:
-ï MC: Memory Clear - Erases stored value
-ï MR: Memory Recall - Shows stored value
-ï M+: Memory Add - Adds display to memory
-ï M-: Memory Subtract - Subtracts from memory
+‚Ä¢ MC: Memory Clear - Erases stored value
+‚Ä¢ MR: Memory Recall - Shows stored value
+‚Ä¢ M+: Memory Add - Adds display to memory
+‚Ä¢ M-: Memory Subtract - Subtracts from memory
 
 Clear Functions:
-ï CE: Clear Entry - Clears current entry only
-ï ?: Backspace - Deletes last character
-ï LastAns: Recalls last calculation result
+‚Ä¢ CE: Clear Entry - Clears current entry only
+‚Ä¢ ‚Üê: Backspace - Deletes last character
+‚Ä¢ LastAns: Recalls last calculation result
 
 Excel Integration:
-ï Get: Gets value from current Excel cell
-ï Insert (Ctrl+Enter): Sends result to Excel
-ï Detachable window mode
-ï Always-on-top option when detached");
+‚Ä¢ Get: Gets value from current Excel cell
+‚Ä¢ Insert (Ctrl+Enter): Sends result to Excel
+‚Ä¢ Detachable window mode
+‚Ä¢ Always-on-top option when detached");
 
             // Scientific Functions Tab (Updated)
             TabPage scientificTab = CreateHelpTab("Scientific Functions", @"Scientific Functions
 
 Constants:
-ï ? (pi): Mathematical constant pi
-  Example: ? = 3.1416 (with 4 decimals)
-  Type 'pi' or use ? button
+‚Ä¢ œÄ (pi): Mathematical constant pi
+  Example: œÄ = 3.1416 (with 4 decimals)
+  Type 'pi' or use œÄ button
 
-ï e: Mathematical constant e
+‚Ä¢ e: Mathematical constant e
   Example: e = 2.7183 (with 4 decimals)
   Type 'e' or use e button
 
 Mathematical Functions:
-ï sqrt(x): Square root
+‚Ä¢ sqrt(x): Square root
   Example: sqrt(16) = 4.0000
-  Example: sqrt(2) ? 1.4142
+  Example: sqrt(2) ‚âà 1.4142
   Note: sqrt(-1) returns complex number i
 
-ï x^y: Power function
+‚Ä¢ x^y: Power function
   Example: 2^3 = 8.0000
   Type '^' or use x^y button
 
-ï 1/x: Reciprocal
+‚Ä¢ 1/x: Reciprocal
   Example: 1/2 = 0.5000
 
 Trigonometric Functions:
-ï sin(x): Sine function
-ï cos(x): Cosine function
-ï tan(x): Tangent function
+‚Ä¢ sin(x): Sine function
+‚Ä¢ cos(x): Cosine function
+‚Ä¢ tan(x): Tangent function
 
 Angle Modes:
-ï RAD: Radians mode (default)
-ï DEG: Degrees mode
-ï ? RAD: Convert degrees to radians
-ï ? DEG: Convert radians to degrees
-  Example: 90∞ ? RAD = ?/2
-  Example: ? ? DEG = 180∞
+‚Ä¢ RAD: Radians mode (default)
+‚Ä¢ DEG: Degrees mode
+‚Ä¢ ‚Üí RAD: Convert degrees to radians
+‚Ä¢ ‚Üí DEG: Convert radians to degrees
+  Example: 90¬∞ ‚Üí RAD = œÄ/2
+  Example: œÄ ‚Üí DEG = 180¬∞
 
 Logarithmic Functions:
-ï log(x): Base-10 logarithm
+‚Ä¢ log(x): Base-10 logarithm
   Example: log(100) = 2.0000
   Note: x must be positive
 
-ï ln(x): Natural logarithm
+‚Ä¢ ln(x): Natural logarithm
   Example: ln(e) = 1.0000
   Note: x must be positive");
 
@@ -150,88 +159,92 @@ Logarithmic Functions:
             TabPage expressionTab = CreateHelpTab("Expression Mode", @"Expression Mode & Syntax
 
 Color-Coded Parentheses:
-ï Matching parentheses are colored the same
-ï Unmatched parentheses appear in red
-ï Visual indicator of expression structure
+‚Ä¢ Matching parentheses are colored the same
+‚Ä¢ Unmatched parentheses appear in red
+‚Ä¢ Visual indicator of expression structure
 
 Parentheses Usage:
-ï Use ( ) for grouping operations
-ï Automatic parentheses balancing
-ï Visual bracket counting
-ï Example: (2 + 3) ◊ 4 = 20
-ï Example: 2 ◊ (3 + 4) = 14
+‚Ä¢ Use ( ) for grouping operations
+‚Ä¢ Automatic parentheses balancing
+‚Ä¢ Visual bracket counting
+‚Ä¢ Example: (2 + 3) √ó 4 = 20
+‚Ä¢ Example: 2 √ó (3 + 4) = 14
 
 Function Combinations:
-ï Functions can be nested
-ï Multiple operations in one expression
-ï Proper operator precedence
+‚Ä¢ Functions can be nested
+‚Ä¢ Multiple operations in one expression
+‚Ä¢ Proper operator precedence
 Examples:
-ï sqrt(sin(?/2) + 16) = 5
-ï log(ln(10)) ? 0.834
-ï 2 + sqrt(16) ◊ 3 = 14
+‚Ä¢ sqrt(sin(œÄ/2) + 16) = 5
+‚Ä¢ log(ln(10)) ‚âà 0.834
+‚Ä¢ 2 + sqrt(16) √ó 3 = 14
 
 Order of Operations:
 1. Parentheses ( )
 2. Functions (sqrt, sin, cos, etc.)
 3. Powers (^)
-4. Multiplication and Division (◊, ˜)
+4. Multiplication and Division (√ó, √∑)
 5. Addition and Subtraction (+, -)
 
 Complex Number Support:
-ï Automatically handles complex numbers when needed
+‚Ä¢ Automatically handles complex numbers when needed
   Example: sqrt(-4) = 0 + 2i
-ï Properly calculates with complex intermediates
-ï Formats complex results with the correct precision
+‚Ä¢ Properly calculates with complex intermediates
+‚Ä¢ Formats complex results with the correct precision
 
 Expression Building Features:
-ï Real-time function name recognition
-ï Auto-completion for functions
-ï Intelligent operator spacing
-ï Automatic error checking
-ï Proper decimal handling");
+‚Ä¢ Real-time function name recognition
+‚Ä¢ Auto-completion for functions
+‚Ä¢ Intelligent operator spacing
+‚Ä¢ Automatic error checking
+‚Ä¢ Proper decimal handling");
 
             // Input Methods Tab (Updated)
             TabPage inputTab = CreateHelpTab("Input Methods", @"Input Methods & Shortcuts
 
 Keyboard Mode:
-ï Blue display indicates keyboard mode
-ï Direct function typing with auto-completion:
+‚Ä¢ Blue display indicates keyboard mode
+‚Ä¢ Direct function typing with auto-completion:
   - Type 'sqrt' for square root
   - Type 'sin' for sine
   - Type 'cos' for cosine
   - Type 'tan' for tangent
   - Type 'log' for logarithm (base 10)
   - Type 'ln' for natural logarithm
-  - Type 'pi' for ?
+  - Type 'pi' for œÄ
   - Type 'e' for e
 
 Special Keys:
-ï F1: Open this help window
-ï Ctrl+Enter: Insert result to Excel
-ï ESC: Clear calculator
-ï Backspace: Delete last character
-ï Enter or =: Calculate result
+‚Ä¢ F1: Open this help window
+‚Ä¢ Ctrl+Enter: Insert result to Excel
+‚Ä¢ ESC: Clear calculator
+‚Ä¢ Backspace: Delete last character
+‚Ä¢ Enter or =: Calculate result
 
 Mouse Input:
-ï Click buttons for numbers
-ï Click operators for operations
-ï Click functions for scientific operations
-ï Click parentheses for grouping
-ï Click LastAns for previous result
-ï Click Settings to configure
+‚Ä¢ Click buttons for numbers
+‚Ä¢ Click operators for operations
+‚Ä¢ Click functions for scientific operations
+‚Ä¢ Click parentheses for grouping
+‚Ä¢ Click LastAns for previous result
+‚Ä¢ Click Settings to configure
 
 Excel Integration:
-ï Get: Import value from current Excel cell
-ï Insert: Send result to current Excel cell
-ï Clipboard-friendly operations
+‚Ä¢ Get: Import value from current Excel cell
+‚Ä¢ Insert: Send result to current Excel cell
+‚Ä¢ Insert as formula: Option in Settings menu
+  - For complex numbers: =COMPLEX(real, imaginary)
+  - For regular numbers: Value inserted directly
+‚Ä¢ Normal vs. formula mode determined in Settings
+‚Ä¢ Clipboard-friendly operations
 
 Tips:
-ï Watch the color of the display
-ï Use parentheses for complex expressions
-ï Check bracket balance indicator
-ï Use CE to clear current entry
-ï Use LastAns to continue calculations
-ï Adjust decimal places in Settings");
+‚Ä¢ Watch the color of the display
+‚Ä¢ Use parentheses for complex expressions
+‚Ä¢ Check bracket balance indicator
+‚Ä¢ Use CE to clear current entry
+‚Ä¢ Use LastAns to continue calculations
+‚Ä¢ Adjust decimal places in Settings");
 
             // Add tabs in order
             tabControl.TabPages.AddRange(new TabPage[] { 

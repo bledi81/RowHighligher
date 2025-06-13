@@ -445,8 +445,24 @@ namespace RowHighligher
         private void Application_WorkbookBeforeClose(Excel.Workbook Wb, ref bool Cancel)
         {
             System.Diagnostics.Debug.WriteLine("WorkbookBeforeClose: Removing highlighter from closing workbook.");
-            // Instead of setting the global IsHighlighterEnabled to false and saving it,
-            // just remove the formatting from the workbook being closed if the highlighter is active.
+            
+            // Close calculator form if it's open
+            if (RibbonInstance?.calculator != null && !RibbonInstance.calculator.IsDisposed)
+            {
+                System.Diagnostics.Debug.WriteLine("WorkbookBeforeClose: Closing calculator form");
+                RibbonInstance.calculator.Close();
+                // No need to set RibbonInstance.calculator = null as FormClosed event handler does this
+            }
+            
+            // Close units converter form if it's open
+            if (RibbonInstance?.unitsConverter != null && !RibbonInstance.unitsConverter.IsDisposed)
+            {
+                System.Diagnostics.Debug.WriteLine("WorkbookBeforeClose: Closing units converter form");
+                RibbonInstance.unitsConverter.Close();
+                // No need to set RibbonInstance.unitsConverter = null as FormClosed event handler does this
+            }
+            
+            // Original code to remove highlighting from the workbook being closed
             if (this.IsHighlighterEnabled)
             {
                 foreach (Excel.Worksheet ws in Wb.Worksheets)
