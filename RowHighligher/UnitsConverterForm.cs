@@ -36,6 +36,9 @@ namespace RowHighligher
 
         public UnitsConverterForm()
         {
+            // Sort the categories alphabetically
+            Categories.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+            
             InitializeComponent();
             if (categoryComboBox.Items.Count > 0)
                 categoryComboBox.SelectedIndex = 0;
@@ -60,9 +63,19 @@ namespace RowHighligher
             
             this.StartPosition = FormStartPosition.CenterScreen; // Changed to CenterScreen for consistency
             
-            // Prepare categories
-            categoryNames = new string[Categories.Count];
-            for (int i = 0; i < Categories.Count; i++) categoryNames[i] = Categories[i].Name;
+            // Prepare categories - sort them alphabetically
+            List<UnitCategory> sortedCategories = new List<UnitCategory>(Categories);
+            sortedCategories.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+            
+            categoryNames = new string[sortedCategories.Count];
+            for (int i = 0; i < sortedCategories.Count; i++) categoryNames[i] = sortedCategories[i].Name;
+            
+            // Create a mapping from category name to index in the original Categories list
+            Dictionary<string, int> categoryIndexMap = new Dictionary<string, int>();
+            for (int i = 0; i < Categories.Count; i++)
+            {
+                categoryIndexMap[Categories[i].Name] = i;
+            }
 
             // Custom title bar
             customTitleBar = new Panel
@@ -146,6 +159,7 @@ namespace RowHighligher
             categoryComboBox = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, Font = smallFontNormal };
             categoryComboBox.Items.AddRange(categoryNames);
             categoryComboBox.SelectedIndexChanged += CategoryComboBox_SelectedIndexChanged;
+            categoryComboBox.Tag = categoryIndexMap; // Store the mapping for use in the SelectedIndexChanged event
             logoPictureBox = new PictureBox
             {
                 Image = Properties.Resources.Bankers_Logo_Albania,
@@ -277,7 +291,12 @@ namespace RowHighligher
             fromUnitComboBox.Items.Clear();
             toUnitComboBox.Items.Clear();
             
-            foreach (var unitName in cat.Units.Keys)
+            // Create a sorted list of unit names
+            List<string> sortedUnitNames = new List<string>(cat.Units.Keys);
+            sortedUnitNames.Sort();
+            
+            // Add units to combo boxes in alphabetical order
+            foreach (var unitName in sortedUnitNames)
             {
                 string symbol = cat.UnitSymbols[unitName];
                 var unitItem = new UnitItem(unitName, symbol);
@@ -348,7 +367,43 @@ namespace RowHighligher
 
         private void CategoryComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            LoadUnits();
+            if (categoryComboBox.SelectedItem != null)
+            {
+                // Get the mapping dictionary from the Tag property
+                var categoryIndexMap = categoryComboBox.Tag as Dictionary<string, int>;
+                if (categoryIndexMap != null)
+                {
+                    // Get the selected category name
+                    string selectedCategoryName = categoryComboBox.SelectedItem.ToString();
+                    
+                    // Get the corresponding index in the original Categories list
+                    if (categoryIndexMap.TryGetValue(selectedCategoryName, out int originalIndex))
+                    {
+                        // Use the original index to get the category from Categories
+                        var cat = Categories[originalIndex];
+                        
+                        // Update the UI with the selected category's units
+                        fromUnitComboBox.Items.Clear();
+                        toUnitComboBox.Items.Clear();
+                        
+                        // Create a sorted list of unit names
+                        List<string> sortedUnitNames = new List<string>(cat.Units.Keys);
+                        sortedUnitNames.Sort();
+                        
+                        // Add units to combo boxes in alphabetical order
+                        foreach (var unitName in sortedUnitNames)
+                        {
+                            string symbol = cat.UnitSymbols[unitName];
+                            var unitItem = new UnitItem(unitName, symbol);
+                            fromUnitComboBox.Items.Add(unitItem);
+                            toUnitComboBox.Items.Add(unitItem);
+                        }
+                        
+                        if (fromUnitComboBox.Items.Count > 0) fromUnitComboBox.SelectedIndex = 0;
+                        if (toUnitComboBox.Items.Count > 1) toUnitComboBox.SelectedIndex = 1;
+                    }
+                }
+            }
         }
 
         private void SwapUnitsButton_Click(object sender, EventArgs e)
@@ -415,7 +470,7 @@ namespace RowHighligher
         // Oil & Gas relevant units
         public static List<UnitCategory> GetOilGasCategories()
         {
-            return new List<UnitCategory>
+            var categories = new List<UnitCategory>
             {
                 new UnitCategory("Length", 
                     new Dictionary<string, double>
@@ -608,18 +663,46 @@ namespace RowHighligher
                     new Dictionary<string, double>
                     {
                         {"cubic meter per second", 1.0},
+                        {"cubic meter per hour", 1.0/3600.0},
+                        {"cubic meter per day", 1.0/86400.0},
                         {"liter per second", 0.001},
                         {"liter per minute", 0.001/60.0},
+                        {"liter per hour", 0.001/3600.0},
+                        {"liter per day", 0.001/86400.0},
+                        {"gallon per second", 0.00378541},
                         {"gallon per minute", 0.00378541/60.0},
-                        {"barrel per day", 0.158987/86400.0}
+                        {"gallon per hour", 0.00378541/3600.0},
+                        {"gallon per day", 0.00378541/86400.0},
+                        {"barrel per second", 0.158987},
+                        {"barrel per minute", 0.158987/60.0},
+                        {"barrel per hour", 0.158987/3600.0},
+                        {"barrel per day", 0.158987/86400.0},
+                        {"cubic foot per second", 0.0283168},
+                        {"cubic foot per minute", 0.0283168/60.0},
+                        {"cubic foot per hour", 0.0283168/3600.0},
+                        {"cubic foot per day", 0.0283168/86400.0},
                     },
                     new Dictionary<string, string>
                     {
                         {"cubic meter per second", "m³/s"},
+                        {"cubic meter per hour", "m³/h"},
+                        {"cubic meter per day", "m³/d"},
                         {"liter per second", "L/s"},
                         {"liter per minute", "L/min"},
+                        {"liter per hour", "L/h"},
+                        {"liter per day", "L/d"},
+                        {"gallon per second", "gal/s"},
                         {"gallon per minute", "gal/min"},
-                        {"barrel per day", "bbl/d"}
+                        {"gallon per hour", "gal/h"},
+                        {"gallon per day", "gal/d"},
+                        {"barrel per second", "bbl/s"},
+                        {"barrel per minute", "bbl/min"},
+                        {"barrel per hour", "bbl/h"},
+                        {"barrel per day", "bbl/d"},
+                        {"cubic foot per second", "ft³/s"},
+                        {"cubic foot per minute", "ft³/min"},
+                        {"cubic foot per hour", "ft³/h"},
+                        {"cubic foot per day", "ft³/d"},
                     }),
                 new UnitCategory("Dynamic Viscosity",
                     new Dictionary<string, double>
@@ -682,6 +765,10 @@ namespace RowHighligher
                         {"pound-force inch", "lbf·in"}
                     })
             };
+            
+            // Sort the categories by name before returning
+            categories.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+            return categories;
         }
 
         public static double Convert(double value, string fromUnit, string toUnit)
