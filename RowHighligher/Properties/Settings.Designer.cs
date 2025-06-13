@@ -130,5 +130,41 @@ namespace RowHighligher.Properties {
                 this["IsConverterDetached"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool CalculatorAngleMode {
+            get {
+                return ((bool)(this["CalculatorAngleMode"]));
+            }
+            set {
+                this["CalculatorAngleMode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseFormulasForComplex {
+            get {
+                return ((bool)(this["UseFormulasForComplex"]));
+            }
+            set {
+                this["UseFormulasForComplex"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseFormulasForNumbers {
+            get {
+                return ((bool)(this["UseFormulasForNumbers"]));
+            }
+            set {
+                this["UseFormulasForNumbers"] = value;
+            }
+        }
     }
 }

@@ -53,6 +53,12 @@ namespace RowHighligher
 
         // Update the field to use the saved setting
         private int decimalPlaces = RowHighligher.Properties.Settings.Default.CalculatorDecimalPlaces;
+        
+        // Add field for complex formula setting
+        private bool useFormulasForComplex = RowHighligher.Properties.Settings.Default.UseFormulasForComplex;
+
+        // Add field for number formula setting
+        private bool useFormulasForNumbers = RowHighligher.Properties.Settings.Default.UseFormulasForNumbers;
 
         // Custom title bar fields
         private Panel customTitleBar;
@@ -1758,10 +1764,91 @@ namespace RowHighligher
                     Excel.Range activeCell = excelApp.ActiveCell;
                     if (activeCell != null)
                     {
-                        double value;
-                        if (double.TryParse(resultDisplayTextBox.Text, out value)) // Insert from result display
+                        if (lastAnswer is Complex complexVal)
                         {
-                            activeCell.Value = value;
+                            // Apply threshold to treat very small values as exactly zero
+                            double realPart = Math.Abs(complexVal.Real) < 1e-15 ? 0 : complexVal.Real;
+                            double imagPart = Math.Abs(complexVal.Imaginary) < 1e-15 ? 0 : complexVal.Imaginary;
+                            
+                            if (useFormulasForComplex)
+                            {
+                                // Insert as Excel formula
+                                string formula;
+                                
+                                // Special case for pure imaginary numbers (no real part)
+                                if (realPart == 0 && imagPart != 0)
+                                {
+                                    // For pure imaginary, use =COMPLEX(0, x) format
+                                    if (imagPart == Math.Sqrt(Math.Abs(-imagPart * imagPart)))
+                                    {
+                                        // If imaginary part is exactly sqrt of some number, use that for clarity
+                                        // Example: 3i would be =COMPLEX(0, SQRT(9))
+                                        double underRadical = imagPart * imagPart;
+                                        string sign = imagPart < 0 ? "-" : "";
+                                        formula = $"=COMPLEX(0, {sign}SQRT({Math.Abs(underRadical)}))";
+                                    }
+                                    else
+                                    {
+                                        // Regular pure imaginary
+                                        formula = $"=COMPLEX(0, {imagPart.ToString(CultureInfo.InvariantCulture)})";
+                                    }
+                                }
+                                else
+                                {
+                                    // Normal complex number with real and/or imaginary parts
+                                    formula = $"=COMPLEX({realPart.ToString(CultureInfo.InvariantCulture)}, {imagPart.ToString(CultureInfo.InvariantCulture)})";
+                                }
+                                
+                                activeCell.Formula = formula;
+                            }
+                            else
+                            {
+                                // Format as plain text, e.g., "a + bi" or "a - bi"
+                                string realStr = realPart.ToString(CultureInfo.InvariantCulture);
+                                string imagStr = Math.Abs(imagPart).ToString(CultureInfo.InvariantCulture);
+                                
+                                // Special handling for pure imaginary numbers
+                                if (realPart == 0 && imagPart != 0)
+                                {
+                                    string plainText = imagPart < 0 ? $"-{imagStr}i" : $"{imagStr}i";
+                                    Clipboard.SetText(plainText);
+                                    activeCell.Value = plainText;
+                                }
+                                else
+                                {
+                                    // Normal complex number format
+                                    string sign = imagPart < 0 ? "-" : "+";
+                                    string plainText = $"{realStr} {sign} {imagStr}i";
+                                    Clipboard.SetText(plainText);
+                                    activeCell.Value = plainText;
+                                }
+                            }
+                            
+                            Marshal.ReleaseComObject(activeCell);
+                        }
+                        else if (lastAnswer is double doubleVal) // Changed from TryParse to direct check
+                        {
+                            if (useFormulasForNumbers)
+                            {
+                                // Use the expression from the expressionDisplayTextBox instead of the evaluated doubleVal
+                                string formulaExpression = expressionDisplayTextBox.Text;
+                                // Sanitize the expression to be a valid Excel formula
+                                formulaExpression = formulaExpression.Replace("√", "SQRT")
+                                                                   .Replace("π", "PI()")
+                                                                   .Replace("e", "EXP(1)")
+                                                                   .Replace("×", "*")
+                                                                   .Replace("÷", "/");
+                                // Ensure the expression starts with '='
+                                if (!formulaExpression.StartsWith("="))
+                                {
+                                    formulaExpression = "=" + formulaExpression;
+                                }
+                                activeCell.Formula = formulaExpression;
+                            }
+                            else
+                            {
+                                activeCell.Value = doubleVal;
+                            }
                             Marshal.ReleaseComObject(activeCell);
                         }
                         else
@@ -1987,12 +2074,19 @@ namespace RowHighligher
             {
                 settingsForm.Owner = this;  // Set the calculator as the owner
                 settingsForm.DecimalPlaces = this.decimalPlaces;
+                settingsForm.UseFormulasForComplex = this.useFormulasForComplex;
+                settingsForm.UseFormulasForNumbers = this.useFormulasForNumbers; // Pass current value
+                
                 if (settingsForm.ShowDialog(this) == DialogResult.OK)  // Use ShowDialog(this)
                 {
                     this.decimalPlaces = settingsForm.DecimalPlaces;
+                    this.useFormulasForComplex = settingsForm.UseFormulasForComplex;
+                    this.useFormulasForNumbers = settingsForm.UseFormulasForNumbers; // Retrieve new value
                     
-                    // Save the setting when it changes
+                    // Save the settings when they change
                     RowHighligher.Properties.Settings.Default.CalculatorDecimalPlaces = this.decimalPlaces;
+                    RowHighligher.Properties.Settings.Default.UseFormulasForComplex = this.useFormulasForComplex;
+                    RowHighligher.Properties.Settings.Default.UseFormulasForNumbers = this.useFormulasForNumbers; // Save new setting
                     RowHighligher.Properties.Settings.Default.Save();
                     
                     // If there's a number currently displayed in the result, reformat it
@@ -2157,7 +2251,11 @@ namespace RowHighligher
     public class CalculatorSettingsForm : Form
     {
         private NumericUpDown decimalPlacesInput;
+        private CheckBox useFormulasForComplexCheckbox;
+        private CheckBox useFormulasForNumbersCheckbox; // Add CheckBox for number formulas
         private int _decimalPlaces; // Renamed to avoid conflict with property
+        private bool _useFormulasForComplex;
+        private bool _useFormulasForNumbers; // Add backing field for new setting
 
         public int DecimalPlaces
         {
@@ -2165,15 +2263,25 @@ namespace RowHighligher
             set 
             { 
                 _decimalPlaces = value; // Use backing field
-                // Properties.Settings.Default.CalculatorDecimalPlaces = value; // Saving is done on Save button
-                // Properties.Settings.Default.Save();
             }
+        }
+
+        public bool UseFormulasForComplex
+        {
+            get { return _useFormulasForComplex; }
+            set { _useFormulasForComplex = value; }
+        }
+
+        public bool UseFormulasForNumbers // Add property for new setting
+        {
+            get { return _useFormulasForNumbers; }
+            set { _useFormulasForNumbers = value; }
         }
 
         public CalculatorSettingsForm()
         {
-            this.Text = "General Settings";
-            this.Size = new Size(400, 200);
+            this.Text = "Calculator Settings";
+            this.Size = new Size(400, 250); // Increased height for the new checkbox
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
@@ -2184,9 +2292,19 @@ namespace RowHighligher
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(10),
-                RowCount = 2,
+                RowCount = 4, // Increased RowCount for the new checkbox and button panel
                 ColumnCount = 2
             };
+
+            // Add row styles to give appropriate space to each row
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25)); // Decimal Places
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25)); // Complex Formulas
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25)); // Number Formulas
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 25)); // Buttons
+
+            // Column styles
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
 
             Label decimalLabel = new Label
             {
@@ -2201,38 +2319,83 @@ namespace RowHighligher
             {
                 Minimum = 0,
                 Maximum = 15,
-                // Value = Properties.Settings.Default.CalculatorDecimalPlaces, // Set by DecimalPlaces property
-                Width = 60
+                Width = 60,
+                Anchor = AnchorStyles.Left
             };
-            // _decimalPlaces = Properties.Settings.Default.CalculatorDecimalPlaces; // Set by DecimalPlaces property
             decimalPlacesInput.ValueChanged += (s, e) => _decimalPlaces = (int)decimalPlacesInput.Value;
 
+            // Add tooltip provider
+            ToolTip toolTip = new ToolTip();
+            toolTip.AutoPopDelay = 5000;
+            toolTip.InitialDelay = 500;
+            toolTip.ReshowDelay = 500;
+            toolTip.ShowAlways = true;
+
+            // Add checkbox for complex formulas
+            useFormulasForComplexCheckbox = new CheckBox
+            {
+                Text = "Add Complex result as formula",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+            };
+            useFormulasForComplexCheckbox.CheckedChanged += (s, e) => _useFormulasForComplex = useFormulasForComplexCheckbox.Checked;
+            
+            // Add tooltip
+            toolTip.SetToolTip(useFormulasForComplexCheckbox, 
+                "When checked: Complex results (e.g., √(-9)) will be inserted as Excel formulas like =COMPLEX(0, 3)\n" +
+                "When unchecked: Complex results will be inserted as plain text (e.g., '3i')");
+
+            // Add checkbox for number formulas
+            useFormulasForNumbersCheckbox = new CheckBox
+            {
+                Text = "Insert result as Excel formula", // Changed text
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+            };
+            useFormulasForNumbersCheckbox.CheckedChanged += (s, e) => _useFormulasForNumbers = useFormulasForNumbersCheckbox.Checked;
+
+            // Add tooltip for number formulas
+            toolTip.SetToolTip(useFormulasForNumbersCheckbox,
+                "When checked: Numeric results (e.g., 123.45) will be inserted as Excel formulas like =123.45\n" +
+                "When unchecked: Numeric results will be inserted as plain values.");
 
             mainPanel.Controls.Add(decimalLabel, 0, 0);
             mainPanel.Controls.Add(decimalPlacesInput, 1, 0);
+            mainPanel.Controls.Add(useFormulasForComplexCheckbox, 0, 1);
+            mainPanel.Controls.Add(useFormulasForNumbersCheckbox, 0, 2); // Add new checkbox to panel
+            
+            TableLayoutPanel buttonPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1
+            };
+            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
             Button saveButton = new Button
             {
                 Text = "Save",
                 DialogResult = DialogResult.OK, // This will close the form with OK
-                Anchor = AnchorStyles.Right
+                Anchor = AnchorStyles.Right,
+                Padding = new Padding(10, 5, 10, 5),
+                AutoSize = true
             };
+            buttonPanel.Controls.Add(saveButton, 1, 0);
+            buttonPanel.SetColumnSpan(saveButton, 1);
             
-            // Save settings when clicking save (DialogResult.OK handles closing)
-            // The actual saving of Properties.Settings.Default.CalculatorDecimalPlaces
-            // should happen in ScientificCalculator form after ShowDialog returns OK.
-            // saveButton.Click += (s, e) => 
-            // { 
-            //     Properties.Settings.Default.CalculatorDecimalPlaces = _decimalPlaces;
-            //     Properties.Settings.Default.Save();
-            // };
+            mainPanel.Controls.Add(buttonPanel, 0, 3); // Adjusted row index for button panel
+            mainPanel.SetColumnSpan(buttonPanel, 2);
             
-            mainPanel.Controls.Add(saveButton, 1, 1);
             this.Controls.Add(mainPanel);
             
             // Ensure the NumericUpDown reflects the initial DecimalPlaces value
             // This should be done after the DecimalPlaces property is set by the caller.
-            this.Load += (s, e) => decimalPlacesInput.Value = Math.Max(0, Math.Min(10, _decimalPlaces));
+            this.Load += (s, e) => {
+                decimalPlacesInput.Value = Math.Max(0, Math.Min(15, _decimalPlaces));
+                useFormulasForComplexCheckbox.Checked = _useFormulasForComplex;
+                useFormulasForNumbersCheckbox.Checked = _useFormulasForNumbers; // Set initial state of new checkbox
+            };
         }
     }
     
