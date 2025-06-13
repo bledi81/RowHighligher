@@ -34,7 +34,7 @@
     <PublishUrl>C:\Users\balla\Documents\Visual Studio 2022\ExcelAddins\RowHighlighter\</PublishUrl>
     <InstallUrl />
     <TargetCulture>en</TargetCulture>
-    <ApplicationVersion>3.5.0.2</ApplicationVersion>
+    <ApplicationVersion>3.9.0.3</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
